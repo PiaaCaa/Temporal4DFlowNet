@@ -38,7 +38,8 @@ class  TrainerController_temporal:
                 weighting_fluid=1.0,
                 weighting_non_fluid=1.0,
                 separate_mse=True,
-                loss_type='l1_projected'):
+                loss_type='l1_projected',
+                use_directional_loss=True):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
@@ -50,6 +51,7 @@ class  TrainerController_temporal:
                 weighting_non_fluid:  Weighting for non-fluid region loss (default 1.0)
                 separate_mse:         If True, compute fluid and non-fluid loss separately (default True)
                 loss_type:            Loss function type: 'l1_projected', 'mse', 'mae', 'huber' (default 'l1_projected')
+                use_directional_loss:  If True, use directional loss (default True)
 
             Training params:
                 initial_learning_rate: Initial learning rate (default 1e-4)
@@ -69,6 +71,7 @@ class  TrainerController_temporal:
         self.weighting_non_fluid = weighting_non_fluid
         self.separate_mse = separate_mse
         self.loss_type = loss_type
+        self.use_directional_loss = use_directional_loss
 
         # General param
         self.res_increase = res_increase
@@ -182,7 +185,7 @@ class  TrainerController_temporal:
             mse_total *= 2
 
         # === Add directional loss if l1_projected ===
-        if self.loss_type == 'l1_projected':
+        if self.use_directional_loss:
             directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, alpha=0.5)
             directional_loss_fluid = tf.reduce_sum(directional_loss * mask, axis=[1, 2, 3]) / (tf.reduce_sum(mask, axis=[1, 2, 3]) + self.epsilon)
             data_loss = self.alpha * mse_total + (1 - self.alpha) * directional_loss_fluid
@@ -353,6 +356,7 @@ class  TrainerController_temporal:
         utility.log_to_file(self.logfile, f'Accuracy metric: {self.accuracy_metric}\n')
         # Log loss configuration
         utility.log_to_file(self.logfile, f'Loss type: {self.loss_type}\n')
+        utility.log_to_file(self.logfile, f'Use directional loss: {self.use_directional_loss}\n')
         utility.log_to_file(self.logfile, f'Alpha: {self.alpha}\n')
         utility.log_to_file(self.logfile, f'Epsilon: {self.epsilon}\n')
         utility.log_to_file(self.logfile, f'Weighting fluid: {self.weighting_fluid}\n')
