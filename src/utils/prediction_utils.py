@@ -21,11 +21,15 @@ def save_to_h5(output_filepath, col_name, dataset, compression=None):
         dataset = np.array(dataset, dtype='float32')
     
     with h5py.File(output_filepath, 'a') as hf:    
+        is_scalar = dataset.shape == () or dataset.ndim == 0
         if col_name not in hf:
             datashape = (None, )
             if (dataset.ndim > 1):
                 datashape = (None, ) + dataset.shape[1:]
-            hf.create_dataset(col_name, data=dataset, maxshape=datashape, compression=compression) # gzip, compression_opts=4
+            if is_scalar:
+                hf.create_dataset(col_name, data=dataset)
+            else:
+                hf.create_dataset(col_name, data=dataset, maxshape=datashape, compression=compression)
         else:
             hf[col_name].resize((hf[col_name].shape[0]) + dataset.shape[0], axis = 0)
             hf[col_name][-dataset.shape[0]:] = dataset
