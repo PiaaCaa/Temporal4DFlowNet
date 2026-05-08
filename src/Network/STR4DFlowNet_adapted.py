@@ -12,7 +12,7 @@ class STR4DFlowNet():
         self.upsampling_block = upsampling_block
         self.post_processing_block= post_processing_block
 
-    def build_network(self, u, v, w, u_mag, v_mag, w_mag, low_resblock=8, hi_resblock=4, channel_nr=64):
+    def build_network(self, u, v, w, u_mag, v_mag, w_mag, low_resblock=8, hi_resblock=4, channel_nr=64, include_mag=True):
         network_blocks = {
             'resnet_block': resnet_block,
             'dense_block': dense_block,
@@ -28,22 +28,32 @@ class STR4DFlowNet():
         }
 
         channel_nr = 64
-
-        speed = (u ** 2 + v ** 2 + w ** 2) ** 0.5
-        mag = (u_mag ** 2 + v_mag ** 2 + w_mag ** 2) ** 0.5
-        pcmr = mag * speed
-
-        phase = tf.keras.layers.concatenate([u,v,w])
-        pc    = tf.keras.layers.concatenate([pcmr, mag, speed])
-        
         padding = 'SYMMETRIC'
-        pc = conv3d(pc,3,channel_nr, padding , 'relu')
-        pc = conv3d(pc,3,channel_nr, padding, 'relu')
 
-        phase = conv3d(phase,3,channel_nr, padding, 'relu')
-        phase = conv3d(phase,3,channel_nr, padding, 'relu')
+        if include_mag:
+            speed = (u ** 2 + v ** 2 + w ** 2) ** 0.5
+            mag = (u_mag ** 2 + v_mag ** 2 + w_mag ** 2) ** 0.5
+            pcmr = mag * speed
 
-        concat_layer = tf.keras.layers.concatenate([phase, pc])
+            phase = tf.keras.layers.concatenate([u,v,w])
+            pc    = tf.keras.layers.concatenate([pcmr, mag, speed])
+            
+            
+            pc = conv3d(pc,3,channel_nr, padding , 'relu')
+            pc = conv3d(pc,3,channel_nr, padding, 'relu')
+
+            phase = conv3d(phase,3,channel_nr, padding, 'relu')
+            phase = conv3d(phase,3,channel_nr, padding, 'relu')
+
+            concat_layer = tf.keras.layers.concatenate([phase, pc])
+            
+        else:
+            # only phase
+            phase = tf.keras.layers.concatenate([u,v,w])
+
+            concat_layer = conv3d(phase,3,channel_nr, padding, 'relu')
+            concat_layer = conv3d(concat_layer,3,channel_nr, padding, 'relu')
+        
         concat_layer = conv3d(concat_layer, 1, channel_nr, padding, 'relu')
         concat_layer = conv3d(concat_layer, 3, channel_nr, padding, 'relu')
         
