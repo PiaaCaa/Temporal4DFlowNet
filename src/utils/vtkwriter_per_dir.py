@@ -217,19 +217,22 @@ def calculate_difference_field(hr_file, prediction_file,hr_colnames, pred_colnam
 
 if __name__ == "__main__":
 
-    input_dir =  "data/CARDIAC/" 
-    output_dir = "results/data/insilico"
+    # input_dir =  "data/CARDIAC/" 
+    input_dir = 'results/paired_data'
+    output_dir = "results/data/invivo/paired_invivo"
 
     columns = ['u', 'v', 'w']
     # columns = ['u_combined', 'v_combined', 'w_combined']
     
-    files = ["M4_2mm_step2_cs_invivoP02_hr"] 
-    # files = ['v3_wholeheart_25mm_40ms', 'v3_wholeheart_25mm_20ms', 
-    #         'v4_wholeheart_25mm_40ms', 'v4_wholeheart_25mm_20ms', 
-    #         'v5_wholeheart_25mm_40ms', 'v5_wholeheart_25mm_20ms',
-    #         'v6_wholeheart_25mm_40ms', 'v6_wholeheart_25mm_20ms', 
-    #         'v7_wholeheart_25mm_40ms', 'v7_wholeheart_25mm_20ms']
-    
+    # files = ["M4_2mm_step2_cs_invivoP02_hr"] 
+    # files = ['v3_wholeheart_25mm_40ms_transformed', 'v3_wholeheart_25mm_20ms_transformed', 
+    #         'v4_wholeheart_25mm_40ms_transformed', 'v4_wholeheart_25mm_20ms_transformed', 
+    #         'v5_wholeheart_25mm_40ms_transformed', 'v5_wholeheart_25mm_20ms_transformed',
+    #         'v6_wholeheart_25mm_40ms_transformed', 'v6_wholeheart_25mm_20ms_transformed', 
+    #         'v7_wholeheart_25mm_40ms_transformed', 'v7_wholeheart_25mm_20ms_transformed']
+    files = ['v5_wholeheart_25mm_40ms/v5_wholeheart_25mm_40ms_20250625-1643']
+    mask_file = 'data/paired_invivo/v5_wholeheart_25mm_40ms.h5'
+
     for file in files:
         print(f"Processing case {file}")
         input_filepath = f"{input_dir}/{file}.h5"
@@ -291,7 +294,7 @@ if __name__ == "__main__":
                 if 'mask' in hf.keys():
                     mask_file = input_filepath
 
-            mask = get_mask(mask_file, idx, key = 'mask')
+            mask = get_mask(mask_file, idx, key = 'mask_smooth')
             
             output_filepath = f'{output_path}/{output_filename}_{idx}_uvw_mask.vti'
 

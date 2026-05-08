@@ -81,22 +81,15 @@ class ImageDataset_temporal():
                 # TODO delete later: 
                 w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[idx_vol]
                 mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()[idx_vol]
+                # print('mag_w shape', mag_w.shape)
+                # if mag_w.ndim == 3:
+                #     mag_w = np.repeat(mag_w[np.newaxis, :, :, :], w.shape[0], axis=0)
+                # print('mag_w shape', mag_w.shape)
+                # mag_w = mag_w[idx_vol]
 
                 # w = w[idx_vol]
                 # mag_w = mag_w[idx_vol]
 
-                # if axis == 0:
-                #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, idx, :, :]
-                #     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, idx, :, :]
-                #     # mask = np.asarray(hl.get('mask')).squeeze()[:, idx, :, :]
-                # elif axis == 1:
-                #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, idx,  :]
-                #     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, idx,  :]
-                #     # mask = np.asarray(hl.get('mask')).squeeze()[:, :, idx, :]
-                # elif axis == 2:
-                #     w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[:, :, :, idx]
-                #     mag_w =  np.asarray(hl.get(self.mag_colnames[i])).squeeze()[:, :, :, idx]
-                #     # mask = np.asarray(hl.get('mask')).squeeze()[:, :, :, idx]
                 
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
 

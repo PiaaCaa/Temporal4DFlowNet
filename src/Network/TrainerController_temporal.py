@@ -17,11 +17,13 @@ from keras.utils.layer_utils import count_params
 
 class  TrainerController_temporal:
     # constructor
-    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default', post_processing_block = None, lr_decay_epochs = 0):
+    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, 
+                 low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default', post_processing_block = None, lr_decay_epochs = 0, include_mag_input=True):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
         """
+        print("Initializing TrainerController_temporal...")
         self.div_weight = 0 # Weighting for divergence loss
         self.non_fluid_weight = 1 # Weigthing for non fluid region
         self.lr_decay_epoch = lr_decay_epochs
@@ -40,8 +42,11 @@ class  TrainerController_temporal:
         self.low_res_block= low_res_block
         self.high_res_block=  high_res_block
         self.post_processing_block = post_processing_block
+        self.including_mag_input = include_mag_input
 
-        input_shape = (patch_size,patch_size,patch_size,1)
+        t_patchsize, s1_ps, s2_ps= patch_size
+
+        input_shape = (t_patchsize,s1_ps,s2_ps,1)
 
         # Prepare Input 
         u = tf.keras.layers.Input(shape=input_shape, name='u')
@@ -52,12 +57,19 @@ class  TrainerController_temporal:
         v_mag = tf.keras.layers.Input(shape=input_shape, name='v_mag')
         w_mag = tf.keras.layers.Input(shape=input_shape, name='w_mag')
 
-        input_layer = [u,v,w,u_mag, v_mag, w_mag]
+        if include_mag_input:
+
+            input_layer = [u,v,w,u_mag, v_mag, w_mag]
+        else:
+            input_layer = [u,v,w]
+
         net = STR4DFlowNet(res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block, post_processing_block=self.post_processing_block )
-        self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock)
+        self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock, include_mag=include_mag_input)
         self.model = tf.keras.Model(input_layer, self.predictions)
 
         self.model.summary()
+        print("Defined loss metrics", flush=True)
+
         # ===== Metrics =====
         self.loss_metrics = dict([
             ('train_loss', tf.keras.metrics.Mean(name='train_loss')),
@@ -72,8 +84,14 @@ class  TrainerController_temporal:
             ('val_cos_sim', tf.keras.metrics.Mean(name='val_cos_sim')), 
             ('l2_reg_loss', tf.keras.metrics.Mean(name='l2_reg_loss')),
         ])
-        self.accuracy_metric = 'val_loss'
         
+        self.accuracy_metric = 'val_loss'
+        print("Defined loss metrics2", flush=True)
+
+        print(f"div_weight type: {type(self.div_weight)}, value: {self.div_weight}", flush=True)
+        print(f"accuracy_metric type: {type(self.accuracy_metric)}, value: {self.accuracy_metric}", flush=True)
+
+
         print(f"Divergence loss2 * {self.div_weight}")
         print(f"Accuracy metric: {self.accuracy_metric}")
 
@@ -81,16 +99,22 @@ class  TrainerController_temporal:
         self.learning_rate = initial_learning_rate
         
         # Optimizer
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)#, clipnorm=4.0)
+
+        # gradient information
+        self.gradient_norm = 0
+        self.gradient_threshold = 1
+        self.gradient_over_threshold = False
         
         # Compile model so we can save the optimizer weights
         # self.model.compile(loss=self.loss_function, optimizer=self.optimizer)
+        
 
-    def save_latest_model(self, epoch):
-        if epoch > 0 and epoch % 10 == 0:
-            self.model.save(f'{self.model_path}-latest.h5')
-            message = f'Saving current model - {time.ctime()}\n'
-            print(message)
+    # def save_latest_model(self, epoch):
+    #     if epoch > 0 and epoch % 10 == 0:
+    #         self.model.save(f'{self.model_path}-latest.h5')
+    #         message = f'Saving current model - {time.ctime()}\n'
+    #         print(message)
 
     def loss_function(self, y_true, y_pred, mask):
         """
@@ -101,36 +125,40 @@ class  TrainerController_temporal:
         u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
 
         alpha = 0.8
-        # data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
-        # data_loss = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) *self.calculate_cosine_similarity_loss(u,v,w, u_pred,v_pred,w_pred)
-        mse = self.calculate_l2_error(u,v,w, u_pred,v_pred,w_pred) 
+        separate_mse = True
+
+        s_err = self.calculate_l2_error(u,v,w, u_pred,v_pred,w_pred) 
         # calculate_l1_mutually_projected_loss
         # mse = alpha * self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) +  (1-alpha)*self.directional_loss_cos(u,v,w, u_pred,v_pred,w_pred) 
         # mse = self.combined_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, weight= 0,alpha=0.5)
         # mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
         # mse = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
         # mse = self.calculate_huber_loss(u, v, w, u_pred, v_pred, w_pred, delta=0.05)
-
-        # === Separate mse ===
-        non_fluid_mask = tf.less(mask, tf.constant(0.5))
-        non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
-
         epsilon = 1 # minimum 1 pixel
+        # === Separate mse ===
+        if separate_mse:
+            weighting_fluid = 1.0
+            weighting_non_fluid = 1.0
+            non_fluid_mask = tf.less(mask, tf.constant(0.5))
+            non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
 
-        fluid_loss = mse * mask
-        fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
+            fluid_loss = s_err * mask
+            fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
-        non_fluid_loss = mse * non_fluid_mask
-        non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
+            non_fluid_loss = s_err * non_fluid_mask
+            non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
 
-        mse_total = fluid_loss + non_fluid_loss
+            mse_total = weighting_fluid*fluid_loss + weighting_non_fluid*non_fluid_loss
+        else:
+            
+            mse_total = tf.reduce_sum(s_err, axis=[1,2,3]) / (mask.shape[1] * mask.shape[2] * mask.shape[3])
+            mse_total *=2
         
         directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred,alpha=0.5)
         directional_loss_fluid = tf.reduce_sum(directional_loss*mask , axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
         data_loss = alpha *mse_total +  (1-alpha)*directional_loss_fluid
         
-
         divergence_loss = 0
 
         # standard without masking
@@ -277,6 +305,8 @@ class  TrainerController_temporal:
 
         # summary - Tensorboard stuff
         self._prepare_logfile_and_summary()
+        print("Model compiled, starting training...")
+
     
     def _prepare_logfile_and_summary(self):
         """
@@ -316,11 +346,14 @@ class  TrainerController_temporal:
     @tf.function
     def train_step(self, data_pairs):
         u,v,w, u_mag, v_mag, w_mag, u_hr,v_hr, w_hr, venc, mask = data_pairs
-        hires = tf.concat((u_hr, v_hr, w_hr), axis=-1)
+        hires = tf.concat([u_hr, v_hr, w_hr], axis=-1)
         with tf.GradientTape() as tape:
             # training=True is only needed if there are layers with different
             # behavior during training versus inference (e.g. Dropout).
-            input_data = [u,v,w, u_mag, v_mag, w_mag]
+            if self.including_mag_input:
+                input_data = [u,v,w, u_mag, v_mag, w_mag]
+            else:
+                input_data = [u,v,w]
             predictions = self.model(input_data, training=True)
 
             loss = self.calculate_and_update_metrics(hires, predictions, mask, 'train')
@@ -328,6 +361,26 @@ class  TrainerController_temporal:
 
         # Get the gradients
         gradients = tape.gradient(loss, self.model.trainable_variables)
+
+        gradients_not_none = [g for g in gradients if g is not None]
+        grad_norm_tensor = tf.linalg.global_norm(gradients_not_none)
+        if tf.math.is_nan(grad_norm_tensor):
+            print("\nGradient norm is NaN")
+        self.gradient_over_threshold = tf.cond(
+            tf.math.greater(grad_norm_tensor, self.gradient_threshold),
+            lambda: tf.constant(True),
+            lambda: tf.constant(False)
+        )
+
+        
+        tf.print("Gradient norm:", grad_norm_tensor)
+        # try: 
+            
+        #     self.gradient_norm = grad_norm_tensor.numpy()
+        # except:
+        #     self.gradient_norm = tf.make_ndarray(tf.make_tensor_proto(grad_norm_tensor))
+
+        # print(f"\nGradient norm: {self.gradient_norm}")
         # Update the weights
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
@@ -337,7 +390,10 @@ class  TrainerController_temporal:
         hires = tf.concat((u_hr, v_hr, w_hr), axis=-1)
         # training=False is only needed if there are layers with different
         # behavior during training versus inference (e.g. Dropout).
-        input_data = [u,v,w, u_mag, v_mag, w_mag]
+        if self.including_mag_input:
+            input_data = [u,v,w, u_mag, v_mag, w_mag]
+        else:
+            input_data = [u,v,w]
         predictions = self.model(input_data, training=False)
         
         self.calculate_and_update_metrics(hires, predictions, mask, 'val')
@@ -388,7 +444,7 @@ class  TrainerController_temporal:
         # ----- Run the training -----
         print("==================== TRAINING =================")
         print(f'Learning rate {self.optimizer.lr.numpy():.7f}')
-        print(f"Start training at {time.ctime()} - {self.unique_model_name}\n")
+        print(f"Start training at {time.ctime()} - {self.unique_model_name}\n", flush=True)
         start_time = time.time()
         
         # Setup acc and data count
@@ -399,24 +455,54 @@ class  TrainerController_temporal:
         for epoch in range(n_epoch):
             # ------------------------------- Training -------------------------------
             
-
             # Reset the metrics at the start of the next epoch
             self.reset_metrics()
 
             start_loop = time.time()
 
             if self.lr_decay_epoch > 0: self.learning_rate_decay(epoch)
+
+            # # Start profiler on a selected epoch
+            # if epoch == 0:
+            #     print("Starting profiler for the first epoch...")
+            #     os.makedirs(self.model_dir + '/tensorboard/profile', exist_ok=True)
+            #     tf.profiler.experimental.start(self.model_dir + '/tensorboard/profile')
             
             # --- Training ---
-            for i, (data_pairs) in enumerate(trainset):
-                # Train the network
-                self.train_step(data_pairs)
-                message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
-                print(f"\r{message}", end='')
+            try:
+                for i, (data_pairs) in enumerate(trainset):
+                    # Train the network
+                    try:
+                        self.train_step(data_pairs)
+                    except Exception as e_train:
+                        print(f"\nError during training step: {e_train}", flush=True)
+                        print("Skipping the rest of the training for this epoch.")
+                        continue
+
+                    # if self.gradient_over_threshold.numpy():
+                    #     print(f"\nGradient norm too high ({self.gradient_norm}), saving current datapairs")
+                    #     self.save_datapairs(data_pairs, epoch, i)
+                    message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs - gradient norm: {self.gradient_norm:.5f}"
+                    print(f"\r{message}", end='', flush=True)
+
+                    
+            except Exception as e:
+                print(f"\nError during training: {e}", flush=True)
+                print("Skipping the rest of the training for this epoch.")
+                continue
+
+            # if epoch == 0:
+            #     print("Stopping profiler for the first epoch...")
+            #     tf.profiler.experimental.stop()
                 
             # --- Validation ---
             for i, (data_pairs) in enumerate(valset):
-                self.test_step(data_pairs)
+                try:
+                    self.test_step(data_pairs)
+                except Exception as e_val:
+                    print(f"\nError during validation step: {e_val}", flush=True)
+                    print("Skipping the rest of the validation for this epoch.")
+                    continue
                 message = f"Epoch {epoch+1} Validation batch {i+1}/{total_batch_val} | loss: {self.loss_metrics['val_loss'].result():.5f} ({self.loss_metrics['val_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs"
                 print(f"\r{message}", end='')
 
@@ -426,7 +512,7 @@ class  TrainerController_temporal:
             loss_values = []
             # Get the loss values from the loss_metrics dict
             for key, value in self.loss_metrics.items():
-                # TODO: handle formatting here
+                
                 loss_values.append(f'{value.result():.5f}')
             loss_str = ','.join(loss_values)
             log_line = f"{epoch+1},{loss_str},{self.optimizer.lr.numpy():.6f},{time.time()-start_loop:.1f}"
@@ -435,6 +521,10 @@ class  TrainerController_temporal:
             self._update_summary_logging(epoch)
 
             # --- Save criteria ---
+            # also save the latest model every epoch
+            self.save_latest_model()
+
+            # only save best model according to the accuracy metric
             if self.loss_metrics[self.accuracy_metric].result() < previous_loss:
                 self.save_best_model()
                 
@@ -486,6 +576,41 @@ class  TrainerController_temporal:
             with open(f'{self.model_dir}/optimizer.pkl', 'wb') as f:
                 pickle.dump(weight_values, f)
 
+    def save_latest_model(self):
+        """
+            Save the latest model weights without caring about the performance
+        """
+        self.model.save(f'{self.model_path}-latest.h5')
+        symbolic_weights = getattr(self.optimizer, 'weights')
+        if symbolic_weights:
+            weight_values = tf.keras.backend.batch_get_value(symbolic_weights)
+            with open(f'{self.model_dir}/optimizer_latest.pkl', 'wb') as f:
+                pickle.dump(weight_values, f)
+
+    def save_datapairs(self, data_pairs, epoch, index_batch):
+        """
+            Save the current datapairs that caused high gradient norm
+        """
+        dir_datapairs = f"{self.model_dir}/{self.network_name}/datapairs"
+        os.makedirs(dir_datapairs, exist_ok=True)
+        u,v,w, u_mag, v_mag, w_mag, u_hr,v_hr, w_hr, venc, mask = data_pairs
+        datapair_filename = f"datapairs_epoch{epoch}_{index_batch}.h5"
+        h5util.save_predictions(dir_datapairs, datapair_filename, "lr_u", u, compression='gzip')
+        h5util.save_predictions(dir_datapairs, datapair_filename, "lr_v", v, compression='gzip')
+        h5util.save_predictions(dir_datapairs, datapair_filename, "lr_w", w, compression='gzip')
+
+        if self.including_mag_input:
+            h5util.save_predictions(dir_datapairs, datapair_filename, "lr_u_mag", u_mag, compression='gzip')
+            h5util.save_predictions(dir_datapairs, datapair_filename, "lr_v_mag", v_mag, compression='gzip')
+            h5util.save_predictions(dir_datapairs, datapair_filename, "lr_w_mag", w_mag, compression='gzip')
+
+        h5util.save_predictions(dir_datapairs, datapair_filename, "hr_u", np.squeeze(u_hr, -1), compression='gzip')
+        h5util.save_predictions(dir_datapairs, datapair_filename, "hr_v", np.squeeze(v_hr, -1), compression='gzip')
+        h5util.save_predictions(dir_datapairs, datapair_filename, "hr_w", np.squeeze(w_hr, -1), compression='gzip')
+
+        h5util.save_predictions(dir_datapairs, datapair_filename, "venc", venc, compression='gzip')
+        h5util.save_predictions(dir_datapairs, datapair_filename, "mask", mask, compression='gzip')
+
     def restore_model(self, old_model_dir, old_model_file):
         """
             Restore model weights and optimizer weights for uncompiled model
@@ -529,7 +654,9 @@ class  TrainerController_temporal:
         with self.train_writer.as_default():
             tf.summary.scalar(f"{self.network_name}/learning_rate", self.optimizer.lr, step=epoch)
             for key in train_metrics.keys():
-                tf.summary.scalar(f"{self.network_name}/{key}",  train_metrics[key].result(), step=epoch)         
+                tf.summary.scalar(f"{self.network_name}/{key}",  train_metrics[key].result(), step=epoch)  
+            # also save gradient norm   
+            tf.summary.scalar(f"{self.network_name}/gradient_norm",  np.mean(self.gradient_norm) if self.gradient_norm else 0, step=epoch)
         
         with self.val_writer.as_default():
             for key in val_metrics.keys():
@@ -545,7 +672,10 @@ class  TrainerController_temporal:
         for i, (data_pairs) in enumerate(testset):
             u,v,w, u_mag, v_mag, w_mag, u_hr,v_hr, w_hr, venc, mask = data_pairs
             hires = tf.concat((u_hr, v_hr, w_hr), axis=-1)
-            input_data = [u,v,w, u_mag, v_mag, w_mag]
+            if self.including_mag_input:
+                input_data = [u,v,w, u_mag, v_mag, w_mag]
+            else:
+                input_data = [u,v,w]
 
             preds = self.model.predict(input_data)
 
