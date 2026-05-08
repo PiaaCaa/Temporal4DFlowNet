@@ -2,7 +2,7 @@ import numpy as np
 import os
 import csv
 import yaml
-from Network.PatchHandler3D_temporal import PatchHandler4D_extended_data_augmentation_optimized
+from Network.PatchHandler3D_temporal import PatchHandler4D_preload
 from Network.TrainerController_temporal import TrainerController_temporal
 
 
@@ -118,18 +118,18 @@ if __name__ == "__main__":
     print('Augmentation headers verified.')
 
     # ---- Build datasets ----
-    trainset = PatchHandler4D_extended_data_augmentation_optimized(
+    trainset = PatchHandler4D_preload(
         data_dir, patch_size_tuple, res_increase, batch_size, mask_threshold, csv_file=training_file
     ).initialize_dataset(load_indexes(training_file), shuffle=shuffle)
 
-    valset = PatchHandler4D_extended_data_augmentation_optimized(
+    valset = PatchHandler4D_preload(
         data_dir, patch_size_tuple, res_increase, batch_size, mask_threshold, csv_file=validate_file
     ).initialize_dataset(load_indexes(validate_file), shuffle=shuffle)
 
     # ---- Optional benchmark set ----
     testset = None
     if QUICKSAVE and benchmark_file is not None:
-        bench_handler = PatchHandler4D_extended_data_augmentation_optimized(
+        bench_handler = PatchHandler4D_preload(
                         data_dir, patch_size_tuple, res_increase, batch_size, mask_threshold, csv_file=benchmark_file
                     ).initialize_dataset(load_indexes(benchmark_file), shuffle=shuffle)
         testset = bench_handler.initialize_dataset(load_indexes(benchmark_file), shuffle=False)

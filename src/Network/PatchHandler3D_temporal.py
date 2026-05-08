@@ -28,7 +28,7 @@ def get_augmentation_title(flip_1, flip_2, rot_angle, sign_u, sign_v, sign_w, sw
     return title
 
 
-class PatchHandler4D_extended_data_augmentation():
+class PatchHandler4D():
     # constructor
     def __init__(self, data_dir, patch_size, res_increase, batch_size, mask_threshold=0.6):
         self.patch_size = patch_size # this will be overwritten in augmenttaion file
@@ -282,7 +282,7 @@ class PatchHandler4D_extended_data_augmentation():
         return u / venc
 
 
-class PatchHandler4D_extended_data_augmentation_optimized():
+class PatchHandler4D_preload():
     # constructor
     def __init__(self, data_dir, patch_size, res_increase, batch_size, mask_threshold=0.6, csv_file=None):
         self.patch_size = patch_size # this will be overwritten in augmenttaion file
