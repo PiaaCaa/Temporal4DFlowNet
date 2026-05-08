@@ -3,7 +3,7 @@ import os
 import csv
 import yaml
 from Network.PatchHandler import PatchHandler4D_preload
-from Network.TrainerController_temporal import TrainerController_temporal
+from Network.TrainerController import TrainerController_temporal
 
 
 def load_config(config_path):
