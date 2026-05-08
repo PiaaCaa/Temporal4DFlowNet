@@ -13,7 +13,7 @@ import os
 from .STR4DFlowNet_adapted import STR4DFlowNet
 from . import utility, h5util, loss_utils
 
-class  TrainerController_temporal:
+class  TrainerController:
     # constructor
     def __init__(self, patch_size, res_increase, 
                 # Training params
@@ -498,7 +498,7 @@ class  TrainerController_temporal:
                         print("Skipping the rest of the training for this epoch.")
                         continue
 
-                    message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs - gradient norm: {self.gradient_norm:.5f}"
+                    message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs "
                     print(f"\r{message}", end='', flush=True)
 
                     
