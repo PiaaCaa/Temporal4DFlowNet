@@ -150,9 +150,6 @@ class  TrainerController_temporal:
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
         u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
 
-        alpha = 0.8
-        separate_mse = True
-
         s_err = self.calculate_l2_error(u,v,w, u_pred,v_pred,w_pred) 
         # calculate_l1_mutually_projected_loss
         # mse = alpha * self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) +  (1-alpha)*self.directional_loss_cos(u,v,w, u_pred,v_pred,w_pred) 
@@ -160,11 +157,11 @@ class  TrainerController_temporal:
         # mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
         # mse = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
         # mse = self.calculate_huber_loss(u, v, w, u_pred, v_pred, w_pred, delta=0.05)
-        epsilon = 1 # minimum 1 pixel
+        epsilon = self.epsilon # minimum 1 pixel
         # === Separate mse ===
-        if separate_mse:
-            weighting_fluid = 1.0
-            weighting_non_fluid = 1.0
+        if self.separate_mse:
+            weighting_fluid = self.weighting_fluid
+            weighting_non_fluid = self.weighting_non_fluid
             non_fluid_mask = tf.less(mask, tf.constant(0.5))
             non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
 
@@ -183,14 +180,11 @@ class  TrainerController_temporal:
         directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred,alpha=0.5)
         directional_loss_fluid = tf.reduce_sum(directional_loss*mask , axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
 
-        data_loss = alpha *mse_total +  (1-alpha)*directional_loss_fluid
-        
-        divergence_loss = 0
+        data_loss = self.alpha *mse_total +  (1-self.alpha)*directional_loss_fluid
 
-        # standard without masking
         total_loss = data_loss 
-        # return all losses for logging
-        return  tf.reduce_mean(total_loss), data_loss, divergence_loss
+        
+        return  tf.reduce_mean(total_loss), data_loss, 0
 
     def mse_loss(self, y_true, y_pred, mask):
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
@@ -331,7 +325,6 @@ class  TrainerController_temporal:
 
         if config_path is not None and os.path.exists(config_path):
             shutil.copy2(config_path, os.path.join(self.model_dir, os.path.basename(config_path)))
-
 
         # summary - Tensorboard stuff
         self._prepare_logfile_and_summary()
