@@ -256,7 +256,7 @@ class PatchHandler4D():
         return u / venc
 
 
-class PatchHandler4D_preloaded():
+class PatchHandler4D_preload():
     """
     Pre-loads all HDF5 data into RAM at init for faster patch loading during training.
     Normalization is applied once at load time. Supports the same augmentation as PatchHandler4D.
@@ -320,7 +320,8 @@ class PatchHandler4D_preloaded():
                     self.lr_files[base_name_lr][self.colname_swap[lr_vel_colname]] = self._normalize(np.array(lr_file[lr_vel_colname]), global_venc)
                     self.lr_files[base_name_lr][lr_mag_colname] = np.array(lr_file[lr_mag_colname]) / 4095.0
                     self.hr_files[base_name_hr][self.colname_swap[hr_vel_colname]] = self._normalize(np.array(hr_file[hr_vel_colname]), global_venc)
-                    print(f"Loaded {lr_vel_colname} and {hr_vel_colname} and swapped {self.colname_swap[lr_vel_colname]} and {self.colname_swap[hr_vel_colname]}")
+                    if lr_vel_colname != self.colname_swap[lr_vel_colname]:
+                        print(f"Loaded {lr_vel_colname} and {hr_vel_colname} and swapped {self.colname_swap[lr_vel_colname]} and {self.colname_swap[hr_vel_colname]}")
 
                 mask = np.array(hr_file[self.mask_colname])
                 mask = (mask >= self.mask_threshold) * 1.0
