@@ -2,7 +2,7 @@ import numpy as np
 import os
 import csv
 import yaml
-from Network.PatchHandler3D_temporal import PatchHandler4D_preload
+from Network.PatchHandler import PatchHandler4D_preload
 from Network.TrainerController_temporal import TrainerController_temporal
 
 
@@ -59,7 +59,8 @@ def write_settings_into_csv_file(filename, name, training_file, validation_file,
 
 
 if __name__ == "__main__":
-    cfg = load_config('/proj/multipress/users/x_piaca/Temporal4DFlowNet/configs/train.yaml')
+    config_path = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/configs/train.yaml'
+    cfg = load_config(config_path)
 
     # ---- Paths ----
     data_dir   = cfg['data_dir']
@@ -95,6 +96,23 @@ if __name__ == "__main__":
     shuffle              = cfg['shuffle']
     sampling             = cfg.get('sampling', '-')
     notes                = cfg['notes']
+
+    # --- Loss params (with defaults clearly visible) ---
+    loss_params = {
+        'alpha':              cfg.get('alpha', 0.8),
+        'epsilon':            cfg.get('epsilon', 1),
+        'weighting_fluid':    cfg.get('weighting_fluid', 1.0),
+        'weighting_non_fluid':cfg.get('weighting_non_fluid', 1.0),
+        'separate_mse':       cfg.get('separate_mse', True),
+        'loss_type':          cfg.get('loss_type', 'l1_projected'),
+    }
+
+    # --- Regularization ---
+    training_params = {
+        'L2_regularization':  cfg.get('L2_regularization', 0.001),
+        'lr_decay_epochs':    cfg.get('lr_decay_epochs', 0),
+        'initial_learning_rate': cfg.get('learning_rate', 1e-4),
+    }
 
     # ---- Verify files exist ----
     print('Checking that all files exist:')
@@ -139,10 +157,12 @@ if __name__ == "__main__":
     network = TrainerController_temporal(
         patch_size_tuple, res_increase, initial_learning_rate, QUICKSAVE,
         network_name, n_low_resblock, n_hi_resblock, low_res_block, high_res_block,
+        **loss_params,
+        **training_params,
         upsampling_block=upsampling_block, post_processing_block=post_processing_block,
         lr_decay_epochs=lr_decay_epochs, include_mag_input=include_mag_input
     )
-    network.init_model_dir()
+    network.init_model_dir(config_path=config_path)
 
     if restore:
         print(f"Restoring model {cfg['model_file']}...")
