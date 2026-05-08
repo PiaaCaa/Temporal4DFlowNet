@@ -61,3 +61,4 @@ src/evaluate_invivo_paired_data_aorta.py
 src/evaluate_insilico_comparison.py
 src/data_specifics/INVIVOII_params.py
 src/utils/settings_aortic_phantom.py
+configs/train.yaml
