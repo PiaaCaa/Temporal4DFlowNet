@@ -144,47 +144,52 @@ class  TrainerController_temporal:
 
     def loss_function(self, y_true, y_pred, mask):
         """
-            Calculate Total Loss function
-            Loss = MSE + weight * div_loss2
-        """
-        u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
-        u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
+            Calculate Total Loss function.
 
-        s_err = self.calculate_l2_error(u,v,w, u_pred,v_pred,w_pred) 
-        # calculate_l1_mutually_projected_loss
-        # mse = alpha * self.calculate_mse(u,v,w, u_pred,v_pred,w_pred) +  (1-alpha)*self.directional_loss_cos(u,v,w, u_pred,v_pred,w_pred) 
-        # mse = self.combined_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, weight= 0,alpha=0.5)
-        # mse = self.calculate_mse(u,v,w, u_pred,v_pred,w_pred)
-        # mse = self.calculate_mae(u, v, w, u_pred, v_pred, w_pred)
-        # mse = self.calculate_huber_loss(u, v, w, u_pred, v_pred, w_pred, delta=0.05)
-        epsilon = self.epsilon # minimum 1 pixel
-        # === Separate mse ===
+            Loss type is controlled by self.loss_type:
+                'mse'          - L2 error only
+                'mae'          - L1 error only
+                'huber'        - Huber loss only
+                'l1_projected' - L2 error + directional L1 mutually projected loss, 
+                                weighted by self.alpha
+            
+            Fluid/non-fluid separation is controlled by self.separate_mse.
+        """
+        u, v, w          = y_true[..., 0], y_true[..., 1], y_true[..., 2]
+        u_pred, v_pred, w_pred = y_pred[..., 0], y_pred[..., 1], y_pred[..., 2]
+
+        # === Select error metric ===
+        if self.loss_type == 'mae':
+            s_err = self.calculate_l1_error(u, v, w, u_pred, v_pred, w_pred)
+        elif self.loss_type == 'huber':
+            s_err = self.calculate_huber_loss(u, v, w, u_pred, v_pred, w_pred)
+        else:  # 'mse' or 'l1_projected' both use L2 as the base error
+            s_err = self.calculate_l2_error(u, v, w, u_pred, v_pred, w_pred)
+
+        # === Compute base loss (fluid/non-fluid separated or combined) ===
         if self.separate_mse:
-            weighting_fluid = self.weighting_fluid
-            weighting_non_fluid = self.weighting_non_fluid
-            non_fluid_mask = tf.less(mask, tf.constant(0.5))
-            non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
+            non_fluid_mask = tf.cast(tf.less(mask, tf.constant(0.5)), dtype=tf.float32)
 
             fluid_loss = s_err * mask
-            fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
+            fluid_loss = tf.reduce_sum(fluid_loss, axis=[1, 2, 3]) / (tf.reduce_sum(mask, axis=[1, 2, 3]) + self.epsilon)
 
             non_fluid_loss = s_err * non_fluid_mask
-            non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
+            non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1, 2, 3]) / (tf.reduce_sum(non_fluid_mask, axis=[1, 2, 3]) + self.epsilon)
 
-            mse_total = weighting_fluid*fluid_loss + weighting_non_fluid*non_fluid_loss
+            mse_total = self.weighting_fluid * fluid_loss + self.weighting_non_fluid * non_fluid_loss
         else:
-            
-            mse_total = tf.reduce_sum(s_err, axis=[1,2,3]) / (mask.shape[1] * mask.shape[2] * mask.shape[3])
-            mse_total *=2
-        
-        directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred,alpha=0.5)
-        directional_loss_fluid = tf.reduce_sum(directional_loss*mask , axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
+            mse_total = tf.reduce_sum(s_err, axis=[1, 2, 3]) / (mask.shape[1] * mask.shape[2] * mask.shape[3])
+            mse_total *= 2
 
-        data_loss = self.alpha *mse_total +  (1-self.alpha)*directional_loss_fluid
+        # === Add directional loss if l1_projected ===
+        if self.loss_type == 'l1_projected':
+            directional_loss = self.calculate_l1_mutually_projected_loss(u, v, w, u_pred, v_pred, w_pred, alpha=0.5)
+            directional_loss_fluid = tf.reduce_sum(directional_loss * mask, axis=[1, 2, 3]) / (tf.reduce_sum(mask, axis=[1, 2, 3]) + self.epsilon)
+            data_loss = self.alpha * mse_total + (1 - self.alpha) * directional_loss_fluid
+        else:
+            data_loss = mse_total
 
-        total_loss = data_loss 
-        
-        return  tf.reduce_mean(total_loss), data_loss, 0
+        return tf.reduce_mean(data_loss), data_loss, 0
 
     def mse_loss(self, y_true, y_pred, mask):
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
