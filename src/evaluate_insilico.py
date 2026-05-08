@@ -5,7 +5,6 @@ from matplotlib import pyplot as plt
 import h5py
 from collections import defaultdict
 import argparse
-from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 from utils.evaluate_utils import *
 
