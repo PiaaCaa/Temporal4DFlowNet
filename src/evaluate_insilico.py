@@ -96,12 +96,9 @@ def load_interpolation(data_model, step, lr, gt):
 
     inbetween_string = ''
 
-    lr_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}_noise.h5'
-
-
     interpolation_dir = 'results/interpolation'
     # interpolation_filename = f'{lr_filename[:-3]}_interpolation'
-    #M4_2mm_step2_static_dynamic_interpolate_no_noise'
+
     interpolation_filename = f'M{data_model}_2mm_step{step}_static{inbetween_string}_interpolate_no_noise'
     interpolation_path = f'{interpolation_dir}/{interpolation_filename}.h5'
     if not os.path.isfile(interpolation_path):
@@ -156,12 +153,14 @@ if __name__ == "__main__":
     if args.model is not None:
         nn_name = args.model
     else:
-        nn_name = '20241018-1552'
+        nn_name = '20250620-1244'#'20250613-1547'#'20250614-2239'#'20241018-1552'
+        # Jessis '20250613-1547'
+        # New nn - no swapping 20250614-2239
 
     # Define directories and filenames
     # nn_name = '20240709-2057'#20240617-0933
     set_name = 'Test'               
-    data_model= '4'
+    data_model= '4'  
     step = 2
     load_interpolation_files = True
     ups_factor = 2
@@ -169,7 +168,7 @@ if __name__ == "__main__":
     # choose which plots to show
     show_img_plot = False
     show_RE_plot = False
-    show_corr_plot = False
+    show_corr_plot = True
     show_bland_altman_plot = False
     show_mean_vel_plot = False
     show_planeMV_plot = False
@@ -182,21 +181,22 @@ if __name__ == "__main__":
     vel_colnames=['u', 'v', 'w']
     t_range_in_ms = True
     exclude_tbounds = False
-    use_peak_systole = False
+    use_peak_systole = True
     range_systole = np.arange(0, 25)
 
-    add_description = '_VENC3'
+    add_description = '_VENC3'#'lr'#'VENC3' #'lr'#
+    add_description_sr = f'{add_description}_2x'# f'_{add_description}_2x'#_swapuwinput
     # directories
     data_dir = 'Temporal4DFlowNet/data/CARDIAC'
     pred_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{nn_name}'
-    eval_dir = f'{pred_dir}/VENC3_evaluation'
+    eval_dir = f'{pred_dir}/Testset'
     eval_dir_overview = f'{eval_dir}/overview'
     eval_dir_detailed = f'{eval_dir}/detailed_view'
 
     # filenames
     gt_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_hr.h5'
     lr_filename = f'M{data_model}_2mm_step{step}_cs_invivoP02_lr{add_description}.h5'
-    pred_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{nn_name[-4::]}_temporal{add_description}.h5'
+    pred_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{nn_name[-4::]}_temporal{add_description_sr}.h5'
     
     # Setting up
     gt_filepath   = '{}/{}'.format(data_dir, gt_filename)
@@ -211,6 +211,13 @@ if __name__ == "__main__":
     # ----------Load data and interpolation files and calculate visualization params----------------
 
     gt, lr, pred = load_vel_data(gt_filepath, lr_filepath, pred_filepath, vel_colnames = vel_colnames)
+
+    # swap pred w, and u
+    # temp_u_pred = pred['u'].copy()
+    # temp_w_pred = pred['w'].copy()
+
+    # pred['u'] = temp_w_pred
+    # pred['w'] = temp_u_pred
 
     N_frames = gt['u'].shape[0]
 
@@ -243,6 +250,7 @@ if __name__ == "__main__":
 
     min_v_global = np.min([min_v[vel] for vel in vel_colnames])
     max_v_global = np.max([max_v[vel] for vel in vel_colnames])
+    
     # calculate boundaries and core mask
     boundary_mask, core_mask = get_boundaries(gt["mask"])
     bool_mask = gt['mask'].astype(bool)
@@ -301,12 +309,12 @@ if __name__ == "__main__":
             # input_name = ['sinc']
             for cmap in colormaps:
                 plot_qual_comparsion(gt['u'][idx_cube], lr['u'][idx_cube_lr], pred['u'][idx_cube], gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [interpolate_sinc['u'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,
-                                    figsize = (8, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_u{add_description}_{cmap}_noabserr.png", include_error=False)
+                                    figsize = (7.7, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_u{add_description}_{cmap}_noabserr.png", include_error=False, aspect_colorbar=20, fontsize_lr=12)
                 plot_qual_comparsion(gt['v'][idx_cube], lr['v'][idx_cube_lr], pred['v'][idx_cube], gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [interpolate_sinc['v'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,
-                                    figsize = (8, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_v{add_description}_{cmap}_noabserr.png", include_error=False)
+                                    figsize = (7.7, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_v{add_description}_{cmap}_noabserr.png", include_error=False, aspect_colorbar=20, fontsize_lr=12)
                 plot_qual_comparsion(gt['w'][idx_cube], lr['w'][idx_cube_lr], pred['w'][idx_cube], gt['mask'][idx_cube], np.abs(gt['w'][idx_cube]- pred['w'][idx_cube]), [interpolate_sinc['w'][idx_cube]], ['sinc'], frames,min_v = None, max_v = None,
-                                    figsize = (8, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_w{add_description}_{cmap}_noabserr.png", include_error=False)
-                
+                                    figsize = (7.7, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_w{add_description}_{cmap}_noabserr.png", include_error=False, aspect_colorbar=20, fontsize_lr=12)
+
                 # plot_qual_comparsion(gt['u'][idx_cube], lr['u'][idx_cube_lr], pred['u'][idx_cube], gt['mask'][idx_cube], np.abs(gt['u'][idx_cube]- pred['u'][idx_cube]), [interpolate_sinc['u'][idx_cube], interpolate_linear['u'][idx_cube]], ['sinc', 'linear'], frames,min_v = None, max_v = None,
                 #                     figsize = (8, 6.5),center_vmin_vmax=False, colormap= cmap, save_as = f"{eval_dir_detailed}/{set_name}_M{data_model}_Qualit_frameseq{frames[0]}-{frames[-1]}_u{add_description}_{cmap}_new3.png", include_error=True)
                 # plot_qual_comparsion(gt['v'][idx_cube], lr['v'][idx_cube_lr], pred['v'][idx_cube], gt['mask'][idx_cube], np.abs(gt['v'][idx_cube]- pred['v'][idx_cube]), [interpolate_sinc['v'][idx_cube], interpolate_linear['v'][idx_cube]], ['sinc', 'linear'], frames,min_v = None, max_v = None,
@@ -428,7 +436,7 @@ if __name__ == "__main__":
         abs_max = np.maximum(abs_max_u, np.maximum(abs_max_v, abs_max_w))
 
 
-        fig, axs = plt.subplots(2, 3, figsize=(12, 8))
+        fig, axs = plt.subplots(2, 3, figsize=(13, 8))
         plot_regression_points_new(axs[0, 0], gt['u'][synthesized_peak_flow_frame, x_rnd, y_nd, z_rnd], pred['u'][synthesized_peak_flow_frame, x_rnd, y_nd, z_rnd], 
                                    gt['u'][synthesized_peak_flow_frame][idx_core_t], pred['u'][synthesized_peak_flow_frame][idx_core_t], abs_max, direction='V$_x$', color='black', show_text=True)
         plot_k_r2_values(axs[1, 0], t_range_hr, k_SR[0, :], r2_SR[0, :], synthesized_peak_flow_frame, min_val, max_val, k_legendname[0], R2_legendname[0], fontsize=18, color_k= KI_colors['Plum'], color_r2= 'DarkGray')
@@ -438,7 +446,7 @@ if __name__ == "__main__":
         plot_regression_points_new(axs[0, 2], gt['w'][synthesized_peak_flow_frame, x_rnd, y_nd, z_rnd], pred['w'][synthesized_peak_flow_frame, x_rnd, y_nd, z_rnd],
                                         gt['w'][synthesized_peak_flow_frame][idx_core_t], pred['w'][synthesized_peak_flow_frame][idx_core_t], abs_max, direction='V$_z$', color='black', show_text=True)
         plot_k_r2_values(axs[1, 2], t_range_hr, k_SR[2, :], r2_SR[2, :], synthesized_peak_flow_frame, min_val, max_val, k_legendname[2], R2_legendname[2], fontsize=18, color_k= KI_colors['Plum'], color_r2= 'DarkGray')
-        axs[1, 1].legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=9)
+        axs[1, 1].legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=12)
         plt.tight_layout()
         plt.savefig(f'{eval_dir_overview}/{set_name}_M{data_model}_correlation_synpeakframe{synthesized_peak_flow_frame}_K_R2_core{add_description}.png')
         plt.savefig(f'{eval_dir_overview}/{set_name}_M{data_model}_correlation_synpeakframe{synthesized_peak_flow_frame}_K_R2_core{add_description}.svg')
@@ -618,7 +626,7 @@ if __name__ == "__main__":
         pred_vel = velocity_through_plane(idx_plane, pred, plane_normal, order_normal = order_normal).reshape(pred['u'].shape[0], xx.shape[1], -1)
 
         #-----plot MV 1; Qualitave plot----- 
-        if False: 
+        if True: 
             idx_crop = np.index_exp[:, 10:37, 15:40]
             idx_crop2 = np.index_exp[10:37, 15:40]
 
@@ -630,7 +638,8 @@ if __name__ == "__main__":
 
             timepoints = [33, 34, 35, 36]
             timepoints_lr = [17, 18]
-            plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_MVplane_meanV_prediction{add_description}.png')
+            plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  
+                                 timepoints = timepoints,figsize=(7.3, 5),  save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_MVplane_meanV_prediction{add_description}.png', aspect_colorbar=20, fontsize_lr=12)
 
         if False: 
             fig = plt.figure(figsize=(10, 10))
@@ -670,7 +679,7 @@ if __name__ == "__main__":
         plt.plot(t_range_hr, hr_flow_rate, '-o',  label = 'HR', color = 'black', markersize = 3)
         plt.plot(t_range_lr, lr_flow_rate,'--o',  label = 'LR', color = 'forestgreen', markersize = 3)
         plt.plot(t_range_hr, pred_flow_rate,'-o',  label = 'SR', color = KI_colors['Plum'], markersize = 3)
-        plt.xlabel('time[s]', fontsize = 16)
+        plt.xlabel('time [s]', fontsize = 16)
         plt.ylabel('Flow rate (ml/s)',  fontsize = 16)
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
@@ -679,19 +688,29 @@ if __name__ == "__main__":
         plt.locator_params(axis='x', nbins=3)
         plt.tight_layout()
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_Flow_rate{add_description}.png',bbox_inches='tight',transparent=True)
+        print("Saved MV flow rate plot to", f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_Flow_rate{add_description}.png')
         plt.show()
 
-        # plit velocity
-        plt.figure(figsize=(8, 5))
+        # plot velocity
+        factor = 0.9
+        width = 8*factor
+        height = 5*factor
+        plt.figure(figsize=(width, height))
         
         plt.plot(t_range_hr, np.mean(hr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'-o', label = 'HR', color = 'black', markersize = 3)
         plt.plot(t_range_lr, np.mean(lr_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'-o', label = 'LR', color = 'forestgreen', markersize = 3)
         plt.plot(t_range_hr, np.mean(pred_vel, where=img_MV_mask.astype(bool), axis=(1, 2)),'--o', label = 'SR', color = KI_colors['Plum'], markersize = 3)
         plt.xlabel('time [s]', fontsize = 16)
-        plt.ylabel('Velocity [m/s]',  fontsize = 16)
+        plt.ylabel('velocity [m/s]',  fontsize = 16)
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
+        plt.gca().spines['top'].set_visible(False)
+        plt.gca().spines['right'].set_visible(False)
+        plt.gca().spines['left'].set_color('gray')
+        plt.gca().spines['bottom'].set_color('gray')
+        # gray plot box
+        # plt.locator_params(axis='y', nbins=3)
         plt.tight_layout()
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_velocity_plane{add_description}.png',bbox_inches='tight', transparent = True)
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_MV_velocity_plane{add_description}.svg',bbox_inches='tight')
@@ -700,7 +719,7 @@ if __name__ == "__main__":
         hr_MV = np.mean(hr_vel, where=img_MV_mask.astype(bool), axis=(1, 2))
         diff_frame= [(frame, diff_MV[frame],  hr_MV[frame]) for frame in range(len(diff_MV))]
         print(f'Difference in flow rate MV between HR and SR: {diff_frame}')
-        print(f'Difference MV between HR and SR at peak early diastole: {diff_MV[synthesized_peak_flow_frame]*100:.2f}')
+        print(f'Difference MV between HR and SR at peak early diastole (frame {synthesized_peak_flow_frame}): {diff_MV[synthesized_peak_flow_frame]*100:.2f}')
 
     
     if show_planeAV_plot:
@@ -768,7 +787,7 @@ if __name__ == "__main__":
         pred_vel = velocity_through_plane(idx_plane, pred, plane_normal, order_normal = order_normal).reshape(pred['u'].shape[0], xx.shape[1], -1)
 
         #-----plot MV 1; Qualitave plot----- 
-        if False: 
+        if True: 
             idx_crop = np.index_exp[:, 17:37, 5:25]
             idx_crop2 = np.index_exp[17:37, 5:25]
 
@@ -781,8 +800,9 @@ if __name__ == "__main__":
             print('Shapes AV cubes:', hr_vel_crop.shape, lr_vel_crop.shape, pred_vel_crop.shape, img_MV_mask_crop.shape)
             timepoints = [6, 7, 8, 9]
             timepoints_lr = [3, 4, 5, 6]
-            plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  timepoints = timepoints,figsize=(8, 5),  save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_AVplane_3D_img_meanV_prediction{add_description}.png')
-
+            plot_qual_comparsion(hr_vel_crop[timepoints[0]:timepoints[-1]+1], lr_vel_crop[timepoints_lr[0]:timepoints_lr[-1]+1], pred_vel_crop[timepoints[0]:timepoints[-1]+1], img_MV_mask,None,  [], [], min_v=None, max_v=None,  
+                                 timepoints = timepoints,figsize=(7.7, 5),  save_as = f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_AVplane_3D_img_meanV_prediction{add_description}.png', aspect_colorbar=20, fontsize_lr=12)
+            print("Saved AV flow plot to", f'{eval_dir_detailed}/{set_name}_M{data_model}_Velocity_through_AVplane_3D_img_meanV_prediction{add_description}.png')
         if False: 
             fig = plt.figure(figsize=(10, 10))
             ax = fig.add_subplot(1, 1, 1, projection='3d')
@@ -826,6 +846,7 @@ if __name__ == "__main__":
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
+
         plt.locator_params(axis='y', nbins=3)
         plt.locator_params(axis='x', nbins=3)
         plt.tight_layout()
@@ -833,17 +854,25 @@ if __name__ == "__main__":
         plt.show()
         
         #-----plot AV 4; Plot velocity profile within mask----- 
-
+        factor = 0.9
+        width = 8*factor
+        height = 5*factor
+        plt.figure(figsize=(width, height))
         #plot mean velocity
-        plt.figure(figsize=(8, 5))
+        # plt.figure(figsize=(8, 5))
         plt.plot(t_range_hr, np.mean(hr_vel, where=img_AV_mask.astype(bool), axis=(1, 2)),'-o', label = 'HR', color = 'black', markersize = 3)
         plt.plot(t_range_lr, np.mean(lr_vel, where=img_AV_mask.astype(bool), axis=(1, 2)),'-o', label = 'LR', color = 'forestgreen', markersize = 3)
         plt.plot(t_range_hr, np.mean(pred_vel, where=img_AV_mask.astype(bool), axis=(1, 2)),'--o', label = 'SR', color = KI_colors['Plum'], markersize = 3)
-        plt.xlabel('time[s]', fontsize = 16)
-        plt.ylabel('Velocity (m/s)',  fontsize = 16)
+        plt.xlabel('time [s]', fontsize = 16)
+        plt.ylabel('velocity [m/s]',  fontsize = 16)
         plt.legend(fontsize = 16)
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
+        plt.gca().spines['top'].set_visible(False)
+        plt.gca().spines['right'].set_visible(False)
+        plt.gca().spines['left'].set_color('gray')
+        plt.gca().spines['bottom'].set_color('gray')
+        plt.locator_params(axis='y', nbins=4)
         plt.tight_layout()
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_AV_velocity_plane{add_description}.png',bbox_inches='tight', transparent = True)
         plt.savefig(f'{eval_dir_detailed}/{set_name}_M{data_model}_AV_velocity_plane{add_description}.svg',bbox_inches='tight')
@@ -853,7 +882,7 @@ if __name__ == "__main__":
         hr_AV = np.mean(hr_vel, where=img_AV_mask.astype(bool), axis=(1, 2))
         diff_frame= [(frame, diff_AV[frame],  hr_AV[frame]) for frame in range(len(diff_AV))]
         print(f'Difference in flow rate Av between HR and SR: {diff_frame}')
-        print(f'Difference in flow rate AV at peak systole: {diff_AV[7]*100:.2f}')
+        print(f'Difference in flow rate AV at peak systole (frame {7}): {diff_AV[7]*100:.2f}')
 
     if show_animation:
         print("Plot animation..")
@@ -865,8 +894,8 @@ if __name__ == "__main__":
         idx_slice = np.index_exp[22, :, :]
         save_peak_frames = False
         max_abs_err = np.max([np.abs(gt['u'] - pred['u'])[idx_slice], np.abs(gt['v'] - pred['v'])[idx_slice], np.abs(gt['w'] - pred['w'])[idx_slice]])
-        # animate_comparison_gif(lr, gt, pred,idx_slice, min_v=min_v_global, max_v=max_v_global, save_as= f'{eval_gifs}/{set_name}_animate_comparison', fps=20, colormap='viridis')
-        animate_comparison_with_error_gif(lr, gt, pred,idx_slice, min_v=min_v_global, max_v=max_v_global, min_err=0, max_err=max_abs_err,  save_as= f'{eval_gifs}/{set_name}_animate_comparison_with_abserror', fps=15, colormap='viridis')
+        animate_comparison_gif(lr, gt, pred,idx_slice, min_v=min_v_global, max_v=max_v_global, save_as= f'{eval_gifs}/{set_name}_animate_comparison', fps=5, colormap='viridis')
+        animate_comparison_with_error_gif(lr, gt, pred,idx_slice, min_v=min_v_global, max_v=max_v_global, min_err=0, max_err=max_abs_err,  save_as= f'{eval_gifs}/{set_name}_animate_comparison_with_abserror', fps=10, colormap='viridis')
         if False: 
             fps = 20
             # animate prediction (slice)
@@ -1218,14 +1247,14 @@ if __name__ == "__main__":
 
             peak_synthesized_systole_frame = 7
             print("Peak flow frame values:")
-            print('RMSE at synthesized peak flow frame:')
+            print(f'RMSE at synthesized peak flow frame {synthesized_peak_flow_frame}:')
             print(f"SR RMSE at synthesized peak flow frame: u: {df_raw.loc[synthesized_peak_flow_frame, 'rmse_pred_u']:.3f}, v: {df_raw.loc[synthesized_peak_flow_frame, 'rmse_pred_v']:.3f}, w: {df_raw.loc[synthesized_peak_flow_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw.loc[synthesized_peak_flow_frame, 'rmse_pred_u'] + df_raw.loc[synthesized_peak_flow_frame, 'rmse_pred_v'] + df_raw.loc[synthesized_peak_flow_frame, 'rmse_pred_w']) / 3:.3f}")
             print(f"SINC interpolation values at synthesized peak flow frame: u: {df_raw_sinc_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_u']:.3f}, v: {df_raw_sinc_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_v']:.3f}, w: {df_raw_sinc_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw_sinc_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_u'] + df_raw_sinc_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_v'] + df_raw_sinc_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_w']) / 3:.3f}")
             print(f"LINEAR interpolation values at synthesized peak flow frame: u: {df_raw_linear_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_u']:.3f}, v: {df_raw_linear_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_v']:.3f}, w: {df_raw_linear_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw_linear_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_u'] + df_raw_linear_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_v'] + df_raw_linear_interp.loc[synthesized_peak_flow_frame, 'rmse_pred_w']) / 3:.3f}")
 
             print(f"SR RMSE at synthesized peak systole frame {peak_synthesized_systole_frame}: u: {df_raw.loc[peak_synthesized_systole_frame, 'rmse_pred_u']:.3f}, v: {df_raw.loc[peak_synthesized_systole_frame, 'rmse_pred_v']:.3f}, w: {df_raw.loc[peak_synthesized_systole_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw.loc[peak_synthesized_systole_frame, 'rmse_pred_u'] + df_raw.loc[peak_synthesized_systole_frame, 'rmse_pred_v'] + df_raw.loc[peak_synthesized_systole_frame, 'rmse_pred_w']) / 3:.3f}")
-            print(f"SINC interpolation values at synthesized peak diastole frame {peak_synthesized_systole_frame}: u: {df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u']:.3f}, v: {df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v']:.3f}, w: {df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u'] + df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v'] + df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']) / 3:.3f}")
-            print(f"LINEAR interpolation values at synthesized peak diastole frame {peak_synthesized_systole_frame}: u: {df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u']:.3f}, v: {df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v']:.3f}, w: {df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u'] + df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v'] + df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']) / 3:.3f}")
+            print(f"SINC interpolation values at synthesized peak systole frame {peak_synthesized_systole_frame}: u: {df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u']:.3f}, v: {df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v']:.3f}, w: {df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u'] + df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v'] + df_raw_sinc_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']) / 3:.3f}")
+            print(f"LINEAR interpolation values at synthesized peak systole frame {peak_synthesized_systole_frame}: u: {df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u']:.3f}, v: {df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v']:.3f}, w: {df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']:.3f}, Average: {(df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_u'] + df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_v'] + df_raw_linear_interp.loc[peak_synthesized_systole_frame, 'rmse_pred_w']) / 3:.3f}")
 
 
 

@@ -158,12 +158,13 @@ if __name__ == "__main__":
     # for one network evluation on multiple invivo datasets
     if True:
         # network_models = ['20240709-2057']#'20240807-1745'#'20240709-2057'¨
-        network_models = ['20240709-2057', '20240827-1704', '20240827-1709', '20240827-1711', '20240827-1713']
-
+        # network_models = ['20240709-2057', '20240827-1704', '20240827-1709', '20240827-1711', '20240827-1713']
+        network_models = ['20241018-1552', '20250502-1741']
+        # network_labels = ['baseline', 'targetsnrsdb1445']
         # set directories 
-        input_dir = 'data/PIA/THORAX'
-        res_dir   = 'results/in_vivo'
-        eval_dir  = f'results/in_vivo/plots/comparison_loss_weighting' # #20230602_1701
+        input_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
+        res_dir   = 'Temporal4DFlowNet/results/in_vivo/THORAX'
+        eval_dir  = f'Temporal4DFlowNet/results/in_vivo/plots/comparison_targetsnrdb1445' # #20230602_1701
         eval_dir_overview = f'{eval_dir}/overview'
 
 

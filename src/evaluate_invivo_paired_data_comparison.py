@@ -11,6 +11,7 @@ from prepare_data.h5functions import save_to_h5
 import matplotlib
 from utils.colors import *
 import matplotlib.animation as animation
+from data_specifics.INVIVOII_params import *
 plt.rcParams['figure.figsize'] = [10, 8]
 
 def plot_plane_flows(u_hr, v_hr, w_hr, u_lr, v_lr, w_lr, u_sr, v_sr, w_sr, mask,
@@ -183,8 +184,16 @@ if __name__ == "__main__":
     # network_models = [ '20240709-2057','20241014-1443', '20241015-1033', '20241015-1047', '20241015-1050']
     # network_labels = ['Baseline','Baseline-fixed loading', 'New dataloading, no augm.', 'New dataloading, with flip augm.', 'Full augm., more noise ']
 
-    network_models = [ '20240709-2057', '20241015-1050', '20241018-1552', '20241018-1502']
-    network_labels = ['Baseline', 'Full augm., more noise ', 'Full augm., high and low noise train patc. ', 'low noise train patc.']
+    # network_models = [ '20240709-2057', '20241015-1050', '20241018-1552', '20241018-1502']
+    # network_labels = ['Baseline', 'Full augm., more noise ', 'Full augm., high and low noise train patc. ', 'low noise train patc.']
+    # network_models = ['20241018-1552', '20250502-1741']
+    # network_labels = ['baseline', 'targetsnrsdb1445']
+    network_models = ['20241018-1552', '20250625-1642']
+    network_labels = ['baseline', 'updated data augm(no swapping)', ]
+
+
+    # network_models = ['20241018-1552', '20241018-1552_rerun']
+    # network_labels = ['baseline', 'baseline rerun']
 
 
     # for one network evluation on multiple invivo datasets
@@ -194,83 +203,13 @@ if __name__ == "__main__":
     lr_dir = 'Temporal4DFlowNet/data/paired_invivo'
     hr_dir = 'Temporal4DFlowNet/data/paired_invivo'
     sr_dir = 'Temporal4DFlowNet/results/in_vivo/paired_data'
-    eval_base_dir  = 'Temporal4DFlowNet/results/in_vivo/paired_data/plots/augmentation_eval'
+    eval_base_dir  = 'Temporal4DFlowNet/results/in_vivo/paired_data/plots/baselinererun'
     
 
-    eval_dir = f'Temporal4DFlowNet/results/in_vivo/paired_data/plots/augmentation_eval/comparison_more_less_noise/'
+    eval_dir = f'Temporal4DFlowNet/results/in_vivo/paired_data/plots/baselinererun'
     os.makedirs(eval_dir, exist_ok=True)
 
     volunteers = ['v3', 'v4','v5', 'v6',  'v7'] #'v5', 'v6',
-
-
-    # plot results for ascending and desceing aorta 
-    volunteer_plane_normal_ascending = {
-    'v3_origin': [198.75, 166.096, 90.2740], 
-    'v3_normal': [-0.9993, -0.03153, 0.019410], 
-    'v4_origin': [182.09, 147.1993, 88.808613], 
-    'v4_normal': [-0.98131, -0.176387, 0.076911],
-    'v5_origin': [184.8120, 141.065, 82.21268],
-    'v5_normal': [-0.92945, -0.07347, 0.3615],
-    'v6_origin': [198.75, 165.3485, 85.68],
-    'v6_normal': [0.98590, 0.055869, -0.15771],
-    'v7_origin': [175.760, 167.830, 84.6532],
-    'v7_normal': [-0.9899, -0.11857, 0.07666],
-    }
-    volunteer_plane_normal_descending = {
-        'v3_origin': [212.00, 222.761, 112.845],
-        'v3_normal': [0.71023, -0.074448, -0.7000],
-        'v4_origin': [202.46253, 201.068, 113.0036],
-        'v4_normal': [0.7341784, 0.0059383, -0.67893],
-        'v5_origin': [201.3359, 205.441, 116.173],
-        'v5_normal': [0.658955, -0.14523, -0.738026],
-        'v6_origin': [199.579, 216.9952277, 88.363],
-        'v6_normal': [0.710689, -0.151932, -0.68690],
-        'v7_origin': [204.60304, 216.851, 92.217],
-        'v7_normal': [0.74243, -0.112015, -0.66048],
-    }
-
-    volunteer_plot_settings = {
-        'v3': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 80:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :80, :]],
-            'thickness_ascending': 30,
-            'thickness_descending': 2,
-        }, 
-        'v4': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 70:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :70, :]],
-            'thickness_ascending': 10,
-            'thickness_descending': 2,
-        }, 
-        'v5': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 65:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :65, :]],
-            'thickness_ascending': 2,
-            'thickness_descending': 2,
-        }, 
-        'v6': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 73:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :73, :]],
-            'thickness_ascending': 2,
-            'thickness_descending': 2,
-        }, 
-        'v7': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 80:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :80, :]],
-            'thickness_ascending': 30,
-            'thickness_descending': 2,
-        }, 
-    }
 
 
 
@@ -390,6 +329,9 @@ if __name__ == "__main__":
 
     for network_model in network_models:
         # Load CSV files for each network model
+        if not os.path.exists(f'{eval_base_dir}/{network_model}/results_aorta_lv.csv'):
+            continue
+        #TODO run the evaluation instead
         df_aorta_lv = pd.read_csv(f'{eval_base_dir}/{network_model}/results_aorta_lv.csv')
         df_aorta = pd.read_csv(f'{eval_base_dir}/{network_model}/results_aorta.csv')
         df_lv = pd.read_csv(f'{eval_base_dir}/{network_model}/results_lv.csv')

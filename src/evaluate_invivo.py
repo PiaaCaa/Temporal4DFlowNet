@@ -163,7 +163,7 @@ if __name__ == "__main__":
     if args.model is not None:
         network_model = args.model
     else:
-        network_model = '20241018-1552' 
+        network_model = '20241018-1552' #20250620-1244
 
     # set directories 
     input_dir = 'Temporal4DFlowNet/data/PIA/THORAX'
@@ -173,9 +173,9 @@ if __name__ == "__main__":
     eval_dir_detailed = f'{eval_dir}/detailed_view'
 
     # options for plotting
-    plot_animation = False
+    plot_animation = True
     plot_corrplot = False
-    plot_qualtimeseries = True
+    plot_qualtimeseries = False
     plot_meanspeed = False
     tabulate_results = False
     save_as_vti = False
@@ -190,8 +190,8 @@ if __name__ == "__main__":
     cases = ['P01', 'P02',  'P03', 'P04', 'P05'] 
     for case in cases:
         print('-------------------', case, '-------------------')
-        in_vivo = f'{input_dir}/{case}/h5/{case}.h5'
-        in_vivo_upsampled = f'{res_dir}/{case}/{case}_{network_model}_25Frames.h5' #results\in_vivo\P05_20230602-1701_8_4_arch_25Frames.h5
+        in_vivo = f'{input_dir}/{case}/h5/{case}.h5' #_transformed
+        in_vivo_upsampled = f'{res_dir}/{case}/{os.path.basename(in_vivo)[:-3]}_{network_model}_25Frames.h5' #results\in_vivo\P05_20230602-1701_8_4_arch_25Frames.h5
         
         name_evaluation = f'THORAX_{case}'
 
@@ -280,7 +280,7 @@ if __name__ == "__main__":
                     # plt.colorbar(im1, ax = axes[0], aspect = 25, label = 'velocity')
                     divider = make_axes_locatable(ax)
                     cax = divider.append_axes("right", size="5%", pad=0.05)
-                    plt.colorbar(im1, cax=cax, label = 'velocity (m/s)')
+                    plt.colorbar(im1, cax=cax, label = 'velocity [m/s]')
 
                 plt.subplot(2, 3, 4+i)
                 ax = plt.gca()
@@ -468,7 +468,7 @@ if __name__ == "__main__":
             if plot_qualtimeseries:
                 
 
-                time_points = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+                time_points = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
                 idx_cube = np.index_exp[time_points[0]:time_points[-1]+1, 30, 15:90, 25:100]
                 idx_cube_lr = np.index_exp[time_points[0]//2:time_points[-1]//2+1, 30, 15:90, 25:100]
                 # idx_cube = np.index_exp[time_points[0]:time_points[-1]+1, 30, 30:60, 60:90]
@@ -488,7 +488,7 @@ if __name__ == "__main__":
                 # def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png"):
 
                 # plot_qual_comparsion(data_original['u'][idx_cube], data_original['u'][::2][idx_cube_lr],data_predicted['u'][idx_cube], data_original['mask'][idx_cube], None, [], [], time_points, None, None, include_error = False,  figsize = (12, 3), save_as = f"{eval_dir}/{name_evaluation}_u_qual_comparison_smaller_patch.png")
-                plot_qual_comparsion(data_original['u'][idx_cube], data_original['u'][::2][idx_cube_lr],data_predicted['u'][idx_cube], data_original['mask'][idx_cube], None, [], [], time_points, None, None, include_error = False,  figsize = (12, 3),fontsize_lr=8, save_as = f"{eval_dir_detailed}/{name_evaluation}_u_qual_comparison_new.png")
+                plot_qual_comparsion(data_original['u'][idx_cube], data_original['u'][::2][idx_cube_lr],data_predicted['u'][idx_cube], data_original['mask'][idx_cube], None, [], [], time_points, None, None, include_error = False,  figsize = (13, 3.5),fontsize_lr=8, save_as = f"{eval_dir_detailed}/{name_evaluation}_u_qual_comparison_new.png")
 
                 # plot_qual_comparsion(data_original['u'][idx_cube], data_original['u'][::2][idx_cube_lr],data_predicted['u'][idx_cube], data_original['mask'][idx_cube], data_original['mask'][idx_cube]*np.abs(data_original['u'][idx_cube] -data_predicted['u'][idx_cube]), [], [], time_points, None, None, include_error = True,  figsize = (12, 4), save_as = f"{eval_dir}/{name_evaluation}_u_qual_comparison_smaller_patch_abs_error.png")
                 plot_qual_comparsion(data_original['u'][idx_cube], data_original['u'][::2][idx_cube_lr],data_predicted['u'][idx_cube], data_original['mask'][idx_cube], data_original['mask'][idx_cube]*np.abs(data_original['u'][idx_cube] -data_predicted['u'][idx_cube]), [], [], time_points, None, None, include_error = True,  figsize = (12, 4), save_as = f"{eval_dir_detailed}/{name_evaluation}_u_qual_comparison_new_abs_error.png")
@@ -521,7 +521,7 @@ if __name__ == "__main__":
             animate_data_over_time_gif(idx_slice, data_original['v'][::2], min_V, max_V, fps = fps_anim//2 , save_as = f'{eval_gifs}/{name_evaluation}_animate_{case}_v_gt_lr_downsampled')
             animate_data_over_time_gif(idx_slice, data_original['w'][::2], min_V, max_V, fps = fps_anim//2 , save_as = f'{eval_gifs}/{name_evaluation}_animate_{case}_w_gt_lr_downsampled')
 
-            if False: 
+            if True: 
                 print('Create video of predicted data..')
                 animate_data_over_time_gif(idx_slice, data_original['mask'], 0, 1,         fps = fps_anim , save_as = f'{eval_gifs}/{name_evaluation}_animate_{case}_mask', colormap='Greys')
                 animate_data_over_time_gif(idx_slice, data_predicted['u'], min_V, max_V, fps = fps_pred , save_as = f'{eval_gifs}/{name_evaluation}_animate_u_pred')
@@ -570,3 +570,14 @@ if __name__ == "__main__":
 
         # print(result_df.to_latex(index=False, float_format="%.2f"))
         result_df.to_csv(f'{eval_dir_overview}/Results_{network_model}_k_r2_avg_peak.csv', index = False)
+
+
+        k_avg_peak = (np.mean(dict_results['k_u_peak']) + np.mean(dict_results['k_v_peak']) + np.mean(dict_results['k_w_peak']))/3
+        r2_avg_peak = (np.mean(dict_results['R2_u_peak']) + np.mean(dict_results['R2_v_peak']) + np.mean(dict_results['R2_w_peak']))/3
+        rmse_avg_peak = (np.mean(dict_results['rmse_u_peak']) + np.mean(dict_results['rmse_v_peak']) + np.mean(dict_results['rmse_w_peak']))/3
+        rmse_avg_all = (np.mean(dict_results['rmse_u']) + np.mean(dict_results['rmse_v']) + np.mean(dict_results['rmse_w']))/3
+        print("-----------------Overall results for all patients:-------------------")
+        print(f"k Average of peak flow frames: {k_avg_peak:.2f}")
+        print(f"R2 Average of peak flow frames: {r2_avg_peak:.2f}")
+        print(f"RMSE across subjects {rmse_avg_all:.2f}")
+        print(f"RMSE avg at peak systole: {rmse_avg_peak:.2f}")

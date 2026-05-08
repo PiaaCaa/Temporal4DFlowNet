@@ -56,3 +56,6 @@ pia_utils/test20_evaluate_on_patches.py
 pia_utils/test21_include_hb_invivo.py
 src/notebooks/data_inspection_copied.ipynb
 src/notebooks/experimental.ipynb
+src/evaluate_invivo_paired_data_aorta.py
+src/evaluate_insilico_comparison.py
+src/data_specifics/INVIVOII_params.py

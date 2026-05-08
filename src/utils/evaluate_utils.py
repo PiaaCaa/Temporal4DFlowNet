@@ -616,7 +616,7 @@ def set_axis_properties(ax, xlabel='', ylabel='', title='', xlim=None, ylim=None
     
     # Grid line for k plot at y=1
     if add_grid:
-        ax.axhline(y=1, color='gray', linestyle='--', linewidth=1)
+        # ax.axhline(y=1, color='gray', linestyle='--', linewidth=1)
         ax.grid(True, which='major', color='lightgray', linestyle='--')
 
     # Set axis limits if provided
@@ -647,14 +647,14 @@ def plot_regression_points_new(ax, hr_vals, sr_vals, all_hr, all_sr, abs_max, di
 def plot_k_r2_values(ax, t_range, k_vals, r2_vals, peak_frame, min_val, max_val, k_label, r2_label, color_k='black', color_r2='purple', fontsize=18, only_k = False):
     """Plots k and R2 values over time on a single axis."""
     ax.set_ylim([min_val, max_val])
-    ax.scatter([t_range[peak_frame]], [k_vals[peak_frame]], color='grey', label='peak synthesized frame')
+    ax.scatter([t_range[peak_frame]], [k_vals[peak_frame]], color='darkgrey', label='peak synthesized frame')
     if not only_k:
         ax.plot(t_range, r2_vals,  label=r2_label, color=color_r2)
-        ax.scatter([t_range[peak_frame]], [r2_vals[peak_frame]], color='grey')
+        ax.scatter([t_range[peak_frame]], [r2_vals[peak_frame]], color='darkgrey')
     ax.plot(t_range, k_vals,'--', label=k_label, color=color_k)
     col_index = 1 if ('x' in k_label.lower() or 'u' in k_label.lower()) else 0
     if only_k:
-        set_axis_properties(ax, xlabel='time [s]', ylabel=k_label, fontsize=fontsize, add_grid=True, col_index=col_index)
+        set_axis_properties(ax, xlabel='time [s]', ylabel=k_label, fontsize=fontsize, add_grid=True, col_index=col_index, xlim=(t_range[0], t_range[-1])) #ylabel=r'$k/R^2$',
     else:
         set_axis_properties(ax, xlabel='time [s]', fontsize=fontsize, add_grid=True, col_index=col_index, set_figure_box=True) #ylabel=r'$k/R^2$',
         # ax.legend(loc='lower right', fontsize=fontsize)
@@ -1441,7 +1441,7 @@ def comparison_plot_slices_over_time(gt_cube,lr_cube, mask_cube, comparison_lst,
 
 # adapted with LR is 'not acquired'
 def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, comparison_lst, comparison_name, timepoints, 
-                         min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png", fontsize_lr = 8, colormap = 'viridis', center_vmin_vmax = False):
+                         min_v, max_v, include_error = False,  figsize = (10, 10), save_as = "Qualitative_frame_seq.png", fontsize_lr = 8, colormap = 'viridis', center_vmin_vmax = False, aspect_colorbar = 15):
     def row_based_idx(num_rows, num_cols, idx):
         return np.arange(1, num_rows*num_cols + 1).reshape((num_rows, num_cols)).transpose().flatten()[idx-1]
 
@@ -1451,10 +1451,10 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
     # lr_cube = np.abs(lr_cube)
     # pred_cube = np.abs(pred_cube)
     # for i in range(len(comparison_lst)):
-    #     comparison_lst[i] = np.abs(comparison_lst[i])
+    #     comparison_lst[i] = np.abs(comparison_lst[i]) 
 
     ups_factor = 2
-    cmap = colormap#'viridis'
+    cmap = colormap
     fontsize = 16
 
     T = 3 + len(comparison_lst)
@@ -1462,7 +1462,7 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
     if include_error: T += 1
 
     # fig = plt.figure(figsize=figsize)
-    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize)
+    fig, axes = plt.subplots(nrows=T, ncols=N, constrained_layout=True, figsize=figsize, facecolor='w')
     if min_v is None or max_v is None:
         if len(mask_cube.shape) == 2:
             print(mask_cube.shape)
@@ -1505,22 +1505,23 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
             if img_cnt == 1: plt.ylabel("LR", fontsize = fontsize)
  
         # plt.title('frame '+ str(t))
-        plt.xticks([])
-        plt.yticks([])
-        
+        # plt.xticks([])
+        # plt.yticks([])
+        plt.axis('off')
         img_cnt +=1
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
         plt.imshow(gt_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,)
         if img_cnt == 2: plt.ylabel("HR", fontsize = fontsize)
-        plt.xticks([])
-        plt.yticks([])
-
+        # plt.xticks([])
+        # plt.yticks([])
+        plt.axis('off')
         img_cnt +=1
         plt.subplot(T, N, row_based_idx(T, N, img_cnt))
         im = plt.imshow(pred_cube[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap,)
         if img_cnt == 3: plt.ylabel("SR", fontsize = fontsize)
-        plt.xticks([])
-        plt.yticks([])
+        # plt.xticks([])
+        # plt.yticks([])
+        plt.axis('off')
 
 
         for comp, name in zip(comparison_lst, comparison_name):
@@ -1528,8 +1529,9 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
             plt.subplot(T, N, row_based_idx(T, N, img_cnt))
             im = plt.imshow(comp[j, :, :], vmin = min_v, vmax = max_v, cmap=cmap, )
             if img_cnt-1 == (img_cnt-1)%T: plt.ylabel(name, fontsize = fontsize)
-            plt.xticks([])
-            plt.yticks([])
+            # plt.xticks([])
+            # plt.yticks([])
+            plt.axis('off')
         
 
         img_cnt +=1
@@ -1537,22 +1539,26 @@ def plot_qual_comparsion(gt_cube,lr_cube,  pred_cube,mask_cube, abserror_cube, c
             plt.subplot(T, N, row_based_idx(T, N, img_cnt))
             err_img = plt.imshow(abserror_cube[j, :, :],vmin=min_rel_error, vmax=max_rel_error, cmap=cmap,)
             if img_cnt-1 == (img_cnt-1)%T: plt.ylabel("abs. error", fontsize = fontsize)
-            plt.xticks([])
-            plt.yticks([])
+            # plt.xticks([])
+            # plt.yticks([])
+            plt.axis('off')
             if t == timepoints[-1]:
-                fig.colorbar(err_img, ax = axes[-1], aspect = 5,pad=0.01, label = 'abs. error [m/s]')
+                fig.colorbar(err_img, ax = axes[-1], aspect = aspect_colorbar,pad=0.01, label = 'abs. error [m/s]')
 
             img_cnt +=1
 
     if include_error:
-        cbar = fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = 23,pad=0.01, label = 'velocity [m/s]')
+        cbar = fig.colorbar(im, ax=axes.ravel()[:-N].tolist(), aspect = aspect_colorbar,pad=0.01, label = 'velocity [m/s]')
     else:
-        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 23,pad=0.01, label = 'velocity [m/s]')
+        # cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect = 23,pad=0.01, label = 'velocity [m/s]')
+        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), aspect = aspect_colorbar,pad=0.01, label = 'velocity [m/s]')
 
     cbar.set_label('velocity [m/s]', fontsize=fontsize)#//2+ 4
     cbar.locator = ticker.MaxNLocator(nbins=4)  # Set the maximum number of ticks
     cbar.update_ticks()
-    cbar.ax.tick_params(labelsize=fontsize//2 + 2)
+    cbar.outline.set_visible(False)
+    # cbar.ax.tick_params(labelsize=fontsize//2 + 2)
+    cbar.ax.tick_params(labelsize=fontsize//2 + 4)
     print(f'Qualitative comparison saved under {save_as}')
     plt.savefig(save_as,bbox_inches='tight', transparent=True)
 

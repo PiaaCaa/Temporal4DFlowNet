@@ -11,22 +11,31 @@ import h5py
 import argparse
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
-def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block):
+def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block, include_mag_input=True):
     # Prepare input
-    input_shape = (patch_size,patch_size,patch_size,1)
+    if isinstance(patch_size, int):
+        patch_size = (patch_size, patch_size, patch_size)
+    elif isinstance(patch_size, tuple):
+        patch_size = patch_size
+    else:
+        raise ValueError("patch_size must be an int or a tuple of 3 ints")
+    input_shape = (*patch_size,1)
     u = tf.keras.layers.Input(shape=input_shape, name='u')
     v = tf.keras.layers.Input(shape=input_shape, name='v')
     w = tf.keras.layers.Input(shape=input_shape, name='w')
-
+    
     u_mag = tf.keras.layers.Input(shape=input_shape, name='u_mag')
     v_mag = tf.keras.layers.Input(shape=input_shape, name='v_mag')
     w_mag = tf.keras.layers.Input(shape=input_shape, name='w_mag')
 
-    input_layer = [u,v,w,u_mag, v_mag, w_mag]
+    if include_mag_input:
+        input_layer = [u,v,w,u_mag, v_mag, w_mag]
+    else:
+        input_layer = [u,v,w]
 
     # network & output
     net = STR4DFlowNet(res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block , post_processing_block=post_processing_block)
-    prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock)
+    prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock, include_mag=include_mag_input)
     model = tf.keras.Model(input_layer, prediction)
 
     return model
@@ -38,25 +47,36 @@ if __name__ == '__main__':
     parser.add_argument("--model", type=str, help="Optional argument to pass the name of the model")
     args = parser.parse_args()
 
+
     # Define directories and filenames
     if args.model is not None:
         model_name = args.model
     else:
-        model_name ='20241018-1552' # this model: training 2, 3, validation: 1, test:4 
+        model_name = '20250624-0138'#'20250614-2239' #20250502-1741' #20241018-1552' # this model: training 2, 3, validation: 1, test:4 
 
-    print("Model name: ", model_name)
+    print(f"-----------------INSILICO PREDICTION WITH TEMPORAL 4DFLOWNET of model {model_name}-----------------------")
 
-    # set_names = ['Test', 'Validation', 'Training', 'Training', 'Training', 'Training']
-    # data_models= ['4', '1', '2', '3', '5', '6',]
-    # steps = [ 2, 2, 2, 2, 2, 2]
-    # file_names = ['M4_2mm_step2_cs_invivoP02_lr.h5','M1_2mm_step2_cs_invivoP01_lr.h5', 
-    #               'M2_2mm_step2_cs_invivoP04_lr_corrected.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
-    #               'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5']
-
-    set_names = ['Test', 'Test', 'Test','Test', 'Test', 'Test',]
-    data_models= ['4', '4', '4','4', '4', '4', ]
+    set_names = ['Test', 'Validation', 'Training']# , 'Training', 'Training', 'Training']
+    data_models= ['4', '1', '2', '3', '5', '6',]
     steps = [ 2, 2, 2, 2, 2, 2]
-    file_names = ['M4_2mm_step2_cs_invivoP02_lr_120ms.h5',]#['M4_2mm_step2_cs_invivoP02_lr_60ms.h5',  'M4_2mm_step2_cs_invivoP02_lr_120ms.h5']
+    file_names = ['M4_2mm_step2_cs_invivoP02_lr_VENC3.h5', 'M1_2mm_step2_cs_invivoP01_lr.h5',
+                  'M2_2mm_step2_cs_invivoP04_lr_corrected.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
+                  'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5']
+    # file_names = ['M4_2mm_step4_cs_invivoP02_lr_targetSNRdb1445.h5', 'M1_2mm_step4_cs_invivoP01_lr_targetSNRdb1445.h5']#,'M1_2mm_step2_cs_invivoP01_lr.h5', ]
+                #   'M2_2mm_step2_cs_invivoP04_lr_corrected.h5', 'M3_2mm_step2_cs_invivoP03_lr.h5', 
+                #   'M5_2mm_step2_cs_invivoP05_lr.h5', 'M6_2mm_step2_cs_invivoP03_lr.h5']
+
+    # set_names = ['Test', 'Validation']
+    # data_models= ['4', '2']
+    # steps = [ 2, 2]
+    # file_names = ['M4_2mm_step4_cs_invivoP02_lr_x4padded_temponly_mask.h5',
+    #               'M2_2mm_step4_cs_invivoP04_lr_x4padded_temponly_mask.h5']
+
+
+    # set_names = ['Test', 'Test', 'Test','Test', 'Test', 'Test',]
+    # data_models= ['4', '4', '4','4', '4', '4', ]
+    # steps = [ 2, 2, 2, 2, 2, 2]
+    # file_names = ['M4_2mm_step2_cs_invivoP02_lr_120ms.h5',]#['M4_2mm_step2_cs_invivoP02_lr_60ms.h5',  'M4_2mm_step2_cs_invivoP02_lr_120ms.h5']
 
     #file_names = ['M4_2mm_step2_static_dynamic_noise.h5', 'M1_2mm_step2_static_dynamic_noise.h5'] #'M2_2mm_step2_static_dynamic_noise.h5', 'M3_2mm_step2_static_dynamic_noise.h5', 
     # set filenamaes and directories
@@ -67,27 +87,32 @@ if __name__ == '__main__':
     for set_name, data_model, step, filename in zip(set_names, data_models, steps, file_names):
         print('Start predicition of:', set_name, data_model, filename)
 
-        # set filenamaes and directories
-        output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_{filename.split(".")[0].split("_")[-1]}_6x.h5'#f'{set_name}_{model_name[-4::]}_{filename}'#f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
-        print("Output file name: ", output_filename)
-        model_path = f'{model_dir}/Temporal4DFlowNet-best.h5'
-
+        t0 = time.time()
         # Params
-        patch_size = 16
-        res_increase = 6
-        batch_size = 32
+        patch_size_tuple = (16, 16, 16) #(5, 23, 23)#
+        res_increase = 2
+        batch_size = 32#92 # 4*23
         round_small_values = False
         downsample_input_first = False # For LR data, which is downsampled on the fly this should be set to True
         upsampling_factor = res_increase
+        
 
         # Network - default 8-4
+        include_mag_input = False
         n_low_resblock = 8
         n_hi_resblock = 4
         low_res_block  = 'resnet_block'      # 'resnet_block' 'dense_block' csp_block
         high_res_block = 'resnet_block'     #'resnet_block'
-        upsampling_block = 'linear'         #'nearest_neigbor'#'linear'#'Conv3DTranspose'#'nearest_neigbor'#'linear''nearest_neigbor' 'Conv3DTranspose'
+        upsampling_block = 'linear'         #'nearest_neigbor'#'linear'#'Conv3DTranspose'
         post_processing_block = None        #'unet_block'
+
+
+        # directories
+        # set filenamaes and directories
+        output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
+        output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_{filename.split(".")[0].split("_")[-1]}_{res_increase}x.h5'#f'{set_name}_{model_name[-4::]}_{filename}'#f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal.h5'
+        print("Output file name: ", output_filename)
+        model_path = f'{model_dir}/Temporal4DFlowNet-best.h5'
 
         # Setting up
         input_filepath = '{}/{}'.format(data_dir, filename)
@@ -98,7 +123,7 @@ if __name__ == '__main__':
             continue
         assert(not os.path.exists(output_filepath))  #STOP if output file is already created
 
-        pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
+        pgen = PatchGenerator(patch_size_tuple, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
         dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])#['venc_u', 'venc_v', 'venc_w'])
 
         print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
@@ -129,9 +154,11 @@ if __name__ == '__main__':
             print(f"Loading 4DFlowNet: {res_increase}x upsample")
 
             # Load the network
-            network = prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block)
+            network = prepare_temporal_network(patch_size_tuple, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block, include_mag_input=include_mag_input)
             network.load_weights(model_path)
 
+
+            print("u combinesd shape: ", u_combined.shape)
             volume = np.zeros((3, u_combined.shape[0],  u_combined.shape[1], u_combined.shape[2],  u_combined.shape[3] ))
             # loop through all the rows in the input file
             for nrow in range(nr_rows):
@@ -147,7 +174,7 @@ if __name__ == '__main__':
                 print(f"Patchified. Nr of patches: {data_size} - {velocities[0].shape}")
 
                 # Predict the patches
-                results = np.zeros((0,patch_size*res_increase, patch_size, patch_size, 3))
+                results = np.zeros((0,patch_size_tuple[0]*res_increase, patch_size_tuple[1], patch_size_tuple[2], 3))
                 start_time = time.time()
 
                 for current_idx in range(0, data_size, batch_size):
@@ -155,14 +182,21 @@ if __name__ == '__main__':
                     print(f"\rProcessed {current_idx}/{data_size} Elapsed: {time_taken:.2f} secs.", end='\r')
                     # Prepare the batch to predict
                     patch_index = np.index_exp[current_idx:current_idx+batch_size]
-                    sr_images = network.predict([velocities[0][patch_index],
-                                            velocities[1][patch_index],
-                                            velocities[2][patch_index],
-                                            magnitudes[0][patch_index],
-                                            magnitudes[1][patch_index],
-                                            magnitudes[2][patch_index]])
+                    if include_mag_input:
+                        sr_images = network.predict([velocities[0][patch_index],
+                                                velocities[1][patch_index],
+                                                velocities[2][patch_index],
+                                                magnitudes[0][patch_index],
+                                                magnitudes[1][patch_index],
+                                                magnitudes[2][patch_index]])
+                    else: 
+                        sr_images = network.predict([velocities[0][patch_index],
+                                                velocities[1][patch_index],
+                                                velocities[2][patch_index]])
 
                     results = np.append(results, sr_images, axis=0)
+                    print(f"Results shape: {sr_images.shape}")
+                    print(f"velocities[0][patch_index]: {velocities[0][patch_index].shape}")
                 # End of batch loop    
                 print("results:", results.shape)
             
@@ -200,10 +234,22 @@ if __name__ == '__main__':
             w_combined += volume[2, :, :, :] 
 
         print("save combined predictions")
+        print(f"Total time taken for {set_name} set: {time.time() - t0:.2f} seconds")
         # save and divide by 3 to get average
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "u_combined", u_combined/3, compression='gzip')
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "v_combined", v_combined/3, compression='gzip')
         prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "w_combined", w_combined/3, compression='gzip')
+
+        # save the venc, input_filepath, and patch size
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "input_filepath", np.array([input_filepath], dtype='S'))
+
+        if dataset.venc is not None:
+            prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "venc", np.array(dataset.venc, dtype='float32'))
+
+        # Save the patch size as a dataset
+        patch_array = np.array(patch_size_tuple) if isinstance(patch_size_tuple, (tuple, list)) else patch_size_tuple
+        prediction_utils.save_to_h5(f'{output_dir}/{output_filename}', "patch_size", patch_array)
+
 
         print('-----------------------------Done with: ', set_name, data_model, '----------------------------------------------')
     print("Done!")

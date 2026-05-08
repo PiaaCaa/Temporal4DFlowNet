@@ -24,7 +24,7 @@ def calculate_relative_error_normalized(u_pred, v_pred, w_pred, u_hi, v_hi, w_hi
 
     if len(binary_mask.squeeze().shape) ==3:
         print('Create temporal mask to calculate relative error')
-        binary_mask = create_dynamic_mask(binary_mask, u_hi.shape[0])
+        binary_mask = np.repeat(binary_mask[np.newaxis, :, :, :], u_pred.shape[0], axis=0) # repeat the mask for all 3 components
 
     u_diff = np.square(u_pred - u_hi)
     v_diff = np.square(v_pred - v_hi)
@@ -94,15 +94,24 @@ if __name__ == '__main__':
 
     print("Model name: ", model_name)
 
-    set_names = ['Validation']
-    data_models= [ '1', ]
+    # set_names = ['Validation']
+    # data_models= [ '1', ]
+    # steps = [ 2]
+    # file_names = ['M1_2mm_step2_cs_invivoP01_lr.h5', ]
+    # hr_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    # hr_filename = ['M1_2mm_step2_static_dynamic.h5']
+    # venc_colnames = ['u_max', 'v_max', 'w_max']
+
+    set_names = ['']
+    data_models= [ '', ]
     steps = [ 2]
-    file_names = ['M1_2mm_step2_cs_invivoP01_lr.h5', ]
-    hr_dir = 'Temporal4DFlowNet/data/CARDIAC'
-    hr_filename = ['M1_2mm_step2_static_dynamic.h5']
+    file_names = ['v3_wholeheart_25mm_40ms_transformed.h5', ]
+    hr_dir = 'Temporal4DFlowNet/data/paired_invivo'
+    hr_filename = ['v3_wholeheart_25mm_20ms_transformed.h5']
+    venc_colnames = ['u_max', 'v_max', 'w_max']
 
     # set filenamaes and directories
-    data_dir = 'Temporal4DFlowNet/data/CARDIAC'
+    data_dir = 'Temporal4DFlowNet/data/paired_invivo'
     output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}/orientation_bias'
     model_dir = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}'
 
@@ -186,8 +195,9 @@ if __name__ == '__main__':
 
             # set filenamaes and directories
             output_dir = f'Temporal4DFlowNet/results/Temporal4DFlowNet_{model_name}'
-            output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_{orientation_variations[var]["name"]}.h5'
-            
+            # output_filename = f'{set_name}set_result_model{data_model}_2mm_step{step}_{model_name[-4::]}_temporal_{orientation_variations[var]["name"]}.h5'
+            output_filename = f'{data_model}_{model_name}_{orientation_variations[var]["name"]}.h5'
+
             model_path = f'{model_dir}/Temporal4DFlowNet-best.h5'
 
             # Params
@@ -213,7 +223,7 @@ if __name__ == '__main__':
             if not os.path.exists(f'{output_dir}/{output_filename}'):
 
                 pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
-                dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])#['venc_u', 'venc_v', 'venc_w'])
+                dataset = ImageDataset_temporal(venc_colnames=venc_colnames)#['venc_u', 'venc_v', 'venc_w'])
 
                 print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
                 print("Outputfile exists already: ", os.path.exists(output_filename))

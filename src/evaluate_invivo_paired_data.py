@@ -14,6 +14,8 @@ import scipy
 from utils.colors import *
 import matplotlib.animation as animation
 import matplotlib.cm as cm
+from data_specifics.INVIVOII_params import *
+
 plt.rcParams['figure.figsize'] = [10, 8]
 
 def plot_plane_flows(u_hr, v_hr, w_hr, u_lr, v_lr, w_lr, u_sr, v_sr, w_sr, 
@@ -274,7 +276,7 @@ if __name__ == "__main__":
     if args.model is not None:
         network_model = args.model
     else:
-        network_model = '20240709-2057' 
+        network_model = '20250502-1741' 
     # for one network evluation on multiple invivo datasets
     
     # set directories 
@@ -282,122 +284,76 @@ if __name__ == "__main__":
     lr_dir = 'Temporal4DFlowNet/data/paired_invivo'
     hr_dir = 'Temporal4DFlowNet/data/paired_invivo'
     sr_dir = 'Temporal4DFlowNet/results/in_vivo/paired_data'
-    eval_base_dir  = 'Temporal4DFlowNet/results/in_vivo/plots/paired_data/IEEETMI/'
     
-    
+    show_animation = False
     show_qual_timeseries = True
-    show_plane_velocities = False
-    show_bland_altman = False
-    show_qual_peak_frames = False
-    tabulate_results = False
+    show_plane_velocities = True
+    show_bland_altman = True
+    show_qual_peak_frames = True
+    tabulate_results = True
     include_interpolation = False
     # plot_mean_speed = True
     # plot_correlation = True
+    mode_transformed = False
 
     
-    eval_dir = f'Temporal4DFlowNet/results/in_vivo/paired_data/plots/IEEETMI/{network_model}'
+    eval_dir = f'Temporal4DFlowNet/results/in_vivo/paired_data/plots/IEEETMI2/{network_model}'
+    if mode_transformed:
+        eval_dir = f'{eval_dir}_transformed'
     os.makedirs(eval_dir, exist_ok=True)
 
-    volunteers = ['v3', 'v5', 'v7'] # 
+    volunteers = ['v3', 'v4', 'v5', 'v6', 'v7']#['v3', 'v5', 'v7']#['v3', 'v4', 'v5', 'v6', 'v7'] # 
 
     results_aorta_lv = {}
     results_aorta = {}
     results_lv = {}
+   
+    
+     #            idx_cube = np.index_exp[time_points[0]:time_points[-1]+1, 67,  50:90, 30:70]
+            # idx_cube_lr = np.index_exp[time_points[0]//2:time_points[-1]//2+1, 67,  50:90, 30:70]
 
-    # plot results for ascending and desceing aorta 
-    volunteer_plane_normal_ascending = {
-    'v3_origin': [198.75, 166.096, 90.2740], 
-    'v3_normal': [-0.9993, -0.03153, 0.019410], 
-    'v4_origin': [182.09, 147.1993, 88.808613], 
-    'v4_normal': [-0.98131, -0.176387, 0.076911],
-    'v5_origin': [184.8120, 141.065, 82.21268],
-    'v5_normal': [-0.92945, -0.07347, 0.3615],
-    'v6_origin': [198.75, 165.3485, 85.68],
-    'v6_normal': [0.98590, 0.055869, -0.15771],
-    'v7_origin': [175.760, 167.830, 84.6532],
-    'v7_normal': [-0.9899, -0.11857, 0.07666],
-    }
-    volunteer_plane_normal_descending = {
-        'v3_origin': [212.00, 222.761, 112.845],
-        'v3_normal': [0.71023, -0.074448, -0.7000],
-        'v4_origin': [202.46253, 201.068, 113.0036],
-        'v4_normal': [0.7341784, 0.0059383, -0.67893],
-        'v5_origin': [201.3359, 205.441, 116.173],
-        'v5_normal': [0.658955, -0.14523, -0.738026],
-        'v6_origin': [199.579, 216.9952277, 88.363],
-        'v6_normal': [0.710689, -0.151932, -0.68690],
-        'v7_origin': [204.60304, 216.851, 92.217],
-        'v7_normal': [0.74243, -0.112015, -0.66048],
-    }
-
-    volunteer_plot_settings = {
-        'v3': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 80:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :80, :]],
-            'thickness_ascending': 30,
-            'thickness_descending': 2,
-        }, 
-        'v4': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 70:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :70, :]],
-            'thickness_ascending': 10,
-            'thickness_descending': 2,
-        }, 
-        'v5': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 65:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :65, :]],
-            'thickness_ascending': 2,
-            'thickness_descending': 2,
-        }, 
-        'v6': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 73:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :73, :]],
-            'thickness_ascending': 2,
-            'thickness_descending': 2,
-        }, 
-        'v7': {
-            'order_normal': [2, 1, 0],
-            'factor_plane_normal': [1, 1, -1],
-            'idxs_nonflow_area_ascending': [np.index_exp[:, 80:, :]],
-            'idxs_nonflow_area_descending': [np.index_exp[:, :80, :]],
-            'thickness_ascending': 30,
-            'thickness_descending': 2,
-        }, 
-    }
 
     results_planes_aorta = {}
 
     for volunteer in volunteers:
         print(f'Evaluate volunteer {volunteer}...')
 
-        lr_filename = f'{volunteer}_wholeheart_25mm_40ms.h5'
         hr_filename = f'{volunteer}_wholeheart_25mm_20ms.h5'
-        sr_filename = f'{volunteer}_wholeheart_25mm_40ms/{volunteer}_wholeheart_25mm_40ms_{network_model}.h5'
+        lr_filename = f'{volunteer}_wholeheart_25mm_40ms.h5'
+        if mode_transformed:
+            hr_filename = f'{volunteer}_wholeheart_25mm_20ms_transformed.h5'
+            lr_filename = f'{volunteer}_wholeheart_25mm_40ms_transformed.h5'
+        sr_filename = f'{lr_filename[:-3]}/{lr_filename[:-3]}_{network_model}.h5'
+        print(sr_filename, network_model)
 
         os.makedirs(eval_dir, exist_ok=True)
 
         with h5py.File(f'{lr_dir}/{lr_filename}', 'r') as f:
+            print(f.keys())
             lr_u = np.array(f['u'])/100 #m/s
             lr_v = np.array(f['v'])/100 #m/s
             lr_w = np.array(f['w'])/100 #m/s
-            mask = np.array(f['mask_smooth'])
+            mask = np.array(f['mask'])
+            # mask = np.array(f['mask_smooth'])
             mask_aorta = np.array(f['mask_aorta_smooth'])
+            print('mask shape:', mask.shape)
+            
             mask_lv = np.array(f['mask_LV_smooth'])
-            lr_hb_duration = np.array(f['hb_duration']).astype(float)/1000 #s
+            if 'hb_duration' in f:
+                lr_hb_duration = np.array(f['hb_duration']).astype(float)/1000
+            else:
+                print('No hb_duration in low resolution file, setting to 1s')
+                lr_hb_duration = 1.0 #s, default value if not present in file
 
         with h5py.File(f'{hr_dir}/{hr_filename}', 'r') as f:
             hr_u = np.array(f['u'])/100 #m/s
             hr_v = np.array(f['v'])/100 #m/s
             hr_w = np.array(f['w'])/100 #m/s
-            hr_hb_duration = np.array(f['hb_duration']).astype(float)/1000 #s
+            if 'hb_duration' in f:
+                hr_hb_duration = np.array(f['hb_duration']).astype(float)/1000
+            else:
+                print('No hb_duration in high resolution file, setting to 1s')
+                hr_hb_duration = 1.0
             if 'dx' in f:
                 dx = np.array(f['dx'])
                 if dx.shape[0] == 1:
@@ -405,7 +361,7 @@ if __name__ == "__main__":
             else:
                 dx = 2.5
 
-
+        print(f" sr filename and sr dir {sr_filename}, {sr_dir}")
         with h5py.File(f'{sr_dir}/{sr_filename}', 'r') as f:
             sr_u = np.array(f['u_combined'])/100 #m/s
             sr_v = np.array(f['v_combined'])/100 #m/s
@@ -414,6 +370,16 @@ if __name__ == "__main__":
         T_lr = lr_u.shape[0]
         T_hr = hr_u.shape[0]
         print('hb_duration', lr_hb_duration, hr_hb_duration)
+
+        if not mode_transformed:
+            volunteer_plane_normal_ascending = volunteer_plane_normal_ascending_orig
+            volunteer_plane_normal_descending = volunteer_plane_normal_descending_orig
+            volunteer_plot_settings = volunteer_plot_settings_orig
+        else:
+            volunteer_plane_normal_ascending = volunteer_plane_normal_ascending_transformed
+            volunteer_plane_normal_descending = volunteer_plane_normal_descending_transformed
+            volunteer_plot_settings = volunteer_plot_settings_transformed
+
 
         if include_interpolation:
             # interpolate low resolution data to high resolution
@@ -566,20 +532,23 @@ if __name__ == "__main__":
         if show_qual_timeseries:
             # time_points = [4, 5, 6, 7, 8,]
             time_points = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-            idx_cube = np.index_exp[time_points[0]:time_points[-1]+1, 67,  50:90, 30:70]
-            idx_cube_lr = np.index_exp[time_points[0]//2:time_points[-1]//2+1, 67,  50:90, 30:70]
+            idx_z = 67
+            if mode_transformed:
+                idx_z = hr_u.shape[1]-idx_z-1 # for transformed data, idx_z is flipped
+            idx_cube = np.index_exp[time_points[0]:time_points[-1]+1, idx_z,  50:90, 30:70]
+            idx_cube_lr = np.index_exp[time_points[0]//2:time_points[-1]//2+1, idx_z,  50:90, 30:70]
             # idx_cube = np.index_exp[time_points[0]:time_points[-1]+1, 67,  45:95, 20:70]
             # idx_cube_lr = np.index_exp[time_points[0]//2:time_points[-1]//2+1, 67,  45:95, 20:70]
             idx_mask = np.index_exp[59, 45:95, 20:70]
 
             # without interpolation
             plot_qual_comparsion(hr_u[idx_cube], lr_u[idx_cube_lr], sr_u[idx_cube], mask[idx_mask], None, [], [], time_points, None, None, include_error = False,  
-                                figsize = (12, 3), save_as = f"{eval_dir}/{volunteer}_qual_comparison_u_frames{time_points[0]}-{time_points[-1]}.png", colormap='viridis')
+                                figsize = (13, 3.5), save_as = f"{eval_dir}/{volunteer}_qual_comparison_u_frames{time_points[0]}-{time_points[-1]}.png", colormap='viridis')
             plot_qual_comparsion(hr_v[idx_cube], lr_v[idx_cube_lr], sr_v[idx_cube], mask[idx_mask], None, [], [], time_points, None, None, include_error = False,  
-                                figsize = (12, 3), save_as = f"{eval_dir}/{volunteer}_qual_comparison_v_frames{time_points[0]}-{time_points[-1]}.png", colormap='viridis')
+                                figsize = (13, 3.5), save_as = f"{eval_dir}/{volunteer}_qual_comparison_v_frames{time_points[0]}-{time_points[-1]}.png", colormap='viridis')
             plot_qual_comparsion(hr_w[idx_cube], lr_w[idx_cube_lr], sr_w[idx_cube], mask[idx_mask], None, [], [], time_points, None, None, include_error = False,  
-                                figsize = (12, 3), save_as = f"{eval_dir}/{volunteer}_qual_comparison_w_frames{time_points[0]}-{time_points[-1]}.png", colormap='viridis')
-            
+                                figsize = (13, 3.5), save_as = f"{eval_dir}/{volunteer}_qual_comparison_w_frames{time_points[0]}-{time_points[-1]}.png", colormap='viridis')
+
             
             for time_point in time_points:
                 if time_point % 2 != 0:
@@ -701,6 +670,56 @@ if __name__ == "__main__":
             plt.tight_layout()
             plt.savefig(f'{eval_dir}/{volunteer}_correlation_and_blandaltman_COMBINED_synpeakframe{synthesized_peak_flow_frame}_core.png')
             plt.show()
+
+        if show_animation:
+            include_orig_data = True
+            eval_gifs = f'{eval_dir}/gifs'
+            os.makedirs(eval_gifs, exist_ok = True)
+            spatial_idx = volunteer_plot_settings[volunteer]['idx_anim_slice']
+            u_min = np.quantile(hr_u[: spatial_idx[0], spatial_idx[1], spatial_idx[2]], 0.01)
+            u_max = np.quantile(hr_u[: spatial_idx[0], spatial_idx[1], spatial_idx[2]], 0.99)
+            v_min = np.quantile(hr_v[: spatial_idx[0], spatial_idx[1], spatial_idx[2]], 0.01)
+            v_max = np.quantile(hr_v[: spatial_idx[0], spatial_idx[1], spatial_idx[2]], 0.99)
+            w_min = np.quantile(hr_w[: spatial_idx[0], spatial_idx[1], spatial_idx[2]], 0.01)
+            w_max = np.quantile(hr_w[: spatial_idx[0], spatial_idx[1], spatial_idx[2]], 0.99)
+
+            diff_u_max = np.max((np.abs(hr_u-sr_u)*mask)[: spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+            diff_v_max = np.max((np.abs(hr_v-sr_v)*mask)[: spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+            diff_w_max = np.max((np.abs(hr_w-sr_w)*mask)[: spatial_idx[0], spatial_idx[1], spatial_idx[2]])
+
+            
+
+            min_V = np.min([u_min, v_min, w_min])
+            max_V = np.max([u_max, v_max, w_max])
+
+            min_err = 0
+            max_err = np.max([diff_u_max, diff_v_max, diff_w_max])
+
+            fps_anim = 10
+            fps_pred = fps_anim
+            if include_orig_data: 
+                
+                print('Create video of original data..')
+                # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], mag, 0, np.quantile(magn, 0.99),      fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_mag', colormap='Greys_r' )
+                # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], mask, 0, 1,           fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_mask', colormap='Greys' )
+            #     animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], hr_u, min_V, max_V,      fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_u_gt')
+            #     animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], hr_v, min_V, max_V,      fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_v_gt')
+            #     animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], hr_w, min_V, max_V,      fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_w_gt')
+            #     animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], hr_u*mask, min_V, max_V,fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_u_gt_fluid')
+            #     animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], hr_v*mask, min_V, max_V,fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_v_gt_fluid')
+            #     animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], hr_w*mask, min_V, max_V,fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_w_gt_fluid')
+
+            # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], lr_u, min_V, max_V, fps = fps_anim//2 , save_as = f'{eval_gifs}/{volunteer}_animate_u_lr')
+            # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], lr_v, min_V, max_V, fps = fps_anim//2 , save_as = f'{eval_gifs}/{volunteer}_animate_v_lr')
+            animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], lr_w, min_V, max_V, fps = fps_anim//2 , save_as = f'{eval_gifs}/{volunteer}_animate_w_lr')
+
+            # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], sr_u, min_V, max_V, fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_u_sr')
+            # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], sr_v, min_V, max_V, fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_v_sr')
+            # animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], sr_w, min_V, max_V, fps = fps_anim , save_as = f'{eval_gifs}/{volunteer}_animate_w_sr')
+
+            animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], np.abs(hr_u-sr_u)*mask, min_err, max_err, fps = fps_anim, save_as = f'{eval_gifs}/{volunteer}_animate_u_hr_sr_diff')
+            animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], np.abs(hr_v-sr_v)*mask, min_err, max_err, fps = fps_anim, save_as = f'{eval_gifs}/{volunteer}_animate_v_hr_sr_diff')
+            animate_data_over_time_gif(volunteer_plot_settings[volunteer]['idx_anim_slice'], np.abs(hr_w-sr_w)*mask, min_err, max_err, fps = fps_anim, save_as = f'{eval_gifs}/{volunteer}_animate_w_hr_sr_diff')
 
     # results in df
     if tabulate_results:
@@ -860,6 +879,7 @@ if __name__ == "__main__":
         df_lv_peak_systole = df_lv_peak_systole.reset_index(drop=True)
         df_lv_peak_diastole = df_lv_peak_diastole.reset_index(drop=True)
 
+        print("Aorta and LV at systole and diastole frames:")
         print(df_aorta_lv_frames)
 
 
@@ -873,9 +893,26 @@ if __name__ == "__main__":
         print(df_peak_systole_diastole)
 
         #print in latex
-        # print(df_peak_systole_diastole.to_latex(index=False, float_format="%.2f"))
+        print(df_peak_systole_diastole.to_latex(index=False, float_format="%.2f"))
         # save as csv
         df_peak_systole_diastole.to_csv(f'{eval_dir}/results_peak_systole_diastole.csv')
+
+        aorta_df = df_peak_systole_diastole[df_peak_systole_diastole['Region'] == 'Aorta']
+        lv_df = df_peak_systole_diastole[df_peak_systole_diastole['Region'] == 'LV']
+        print("------Summary of results------")
+        k_avg_aorta = (np.mean(aorta_df['k_u']) + np.mean(aorta_df['k_v']) + np.mean(aorta_df['k_w']))/3
+        r2_avg_aorta = (np.mean(aorta_df['r2_u']) + np.mean(aorta_df['r2_v']) + np.mean(aorta_df['r2_w']))/3
+        rmse_avg_aorta = (np.mean(aorta_df['RMSE_u']) + np.mean(aorta_df['RMSE_v']) + np.mean(aorta_df['RMSE_w']))/3
+
+        k_avg_lv = (np.mean(lv_df['k_u']) + np.mean(lv_df['k_v']) + np.mean(lv_df['k_w']))/3
+        r2_avg_lv = (np.mean(lv_df['r2_u']) + np.mean(lv_df['r2_v']) + np.mean(lv_df['r2_w']))/3
+        rmse_avg_lv = (np.mean(lv_df['RMSE_u']) + np.mean(lv_df['RMSE_v']) + np.mean(lv_df['RMSE_w']))/3
+
+        print("Aorta")
+        print(f"Aorta k, R2 and RMSE across subjects at peak : {k_avg_aorta:.2f}, {r2_avg_aorta:.2f}, {rmse_avg_aorta:.3f} m/s")
+        print("Left Ventricle")
+        print(f"Left Ventricle k, R2 and RMSE across subjects at peak: {k_avg_lv:.2f}, {r2_avg_lv:.2f}, {rmse_avg_lv:.3f} m/s")
+        print("------------------------------")
 
 
     if show_plane_velocities:
