@@ -17,17 +17,58 @@ from keras.utils.layer_utils import count_params
 
 class  TrainerController_temporal:
     # constructor
-    def __init__(self, patch_size, res_increase, initial_learning_rate=1e-4, quicksave_enable=True, network_name='4DFlowNet', n_low_resblock=8, n_hi_resblock=4, 
-                 low_res_block = 'resnet_block', high_res_block= 'resnet_block', upsampling_block = 'default', post_processing_block = None, lr_decay_epochs = 0, include_mag_input=True):
+    def __init__(self, patch_size, res_increase, 
+                # Training params
+                initial_learning_rate=1e-4, 
+                lr_decay_epochs=0,
+                L2_regularization=0.001,
+                # Network params
+                quicksave_enable=True, 
+                network_name='4DFlowNet', 
+                n_low_resblock=8, 
+                n_hi_resblock=4, 
+                low_res_block='resnet_block', 
+                high_res_block='resnet_block', 
+                upsampling_block='default', 
+                post_processing_block=None, 
+                include_mag_input=True,
+                # Loss params
+                alpha=0.8,
+                epsilon=1,
+                weighting_fluid=1.0,
+                weighting_non_fluid=1.0,
+                separate_mse=True,
+                loss_type='l1_projected'):
         """
             TrainerController constructor
             Setup all the placeholders, network graph, loss functions and optimizer here.
+
+            Loss params:
+                alpha:                Weighting between MSE and directional loss (default 0.8)
+                epsilon:              Minimum pixel count to avoid division by zero (default 1)
+                weighting_fluid:      Weighting for fluid region loss (default 1.0)
+                weighting_non_fluid:  Weighting for non-fluid region loss (default 1.0)
+                separate_mse:         If True, compute fluid and non-fluid loss separately (default True)
+                loss_type:            Loss function type: 'l1_projected', 'mse', 'mae', 'huber' (default 'l1_projected')
+
+            Training params:
+                initial_learning_rate: Initial learning rate (default 1e-4)
+                lr_decay_epochs:       Decay learning rate every N epochs, 0 to disable (default 0)
+                L2_regularization:     L2 regularization weight, 0 to disable (default 0.001)
         """
-        print("Initializing TrainerController_temporal...")
-        self.div_weight = 0 # Weighting for divergence loss
-        self.non_fluid_weight = 1 # Weigthing for non fluid region
+        print("Initializing TrainerController...")
+        
+        # Loss weights
         self.lr_decay_epoch = lr_decay_epochs
-        self.L2_regularization = 0.001 
+        self.L2_regularization = L2_regularization
+
+        # Loss params
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.weighting_fluid = weighting_fluid
+        self.weighting_non_fluid = weighting_non_fluid
+        self.separate_mse = separate_mse
+        self.loss_type = loss_type
 
         # General param
         self.res_increase = res_increase
@@ -37,77 +78,62 @@ class  TrainerController_temporal:
         
         # Network
         self.network_name = network_name
-
-        #block structure (Res, dense or cps) Net
-        self.low_res_block= low_res_block
-        self.high_res_block=  high_res_block
+        self.low_res_block = low_res_block
+        self.high_res_block = high_res_block
         self.post_processing_block = post_processing_block
         self.including_mag_input = include_mag_input
 
-        t_patchsize, s1_ps, s2_ps= patch_size
-
-        input_shape = (t_patchsize,s1_ps,s2_ps,1)
+        t_patchsize, s1_ps, s2_ps = patch_size
+        input_shape = (t_patchsize, s1_ps, s2_ps, 1)
 
         # Prepare Input 
-        u = tf.keras.layers.Input(shape=input_shape, name='u')
-        v = tf.keras.layers.Input(shape=input_shape, name='v')
-        w = tf.keras.layers.Input(shape=input_shape, name='w')
-
+        u     = tf.keras.layers.Input(shape=input_shape, name='u')
+        v     = tf.keras.layers.Input(shape=input_shape, name='v')
+        w     = tf.keras.layers.Input(shape=input_shape, name='w')
         u_mag = tf.keras.layers.Input(shape=input_shape, name='u_mag')
         v_mag = tf.keras.layers.Input(shape=input_shape, name='v_mag')
         w_mag = tf.keras.layers.Input(shape=input_shape, name='w_mag')
 
-        if include_mag_input:
+        input_layer = [u, v, w, u_mag, v_mag, w_mag] if include_mag_input else [u, v, w]
 
-            input_layer = [u,v,w,u_mag, v_mag, w_mag]
-        else:
-            input_layer = [u,v,w]
-
-        net = STR4DFlowNet(res_increase,low_res_block=low_res_block, high_res_block=high_res_block,  upsampling_block=upsampling_block, post_processing_block=self.post_processing_block )
+        net = STR4DFlowNet(res_increase, low_res_block=low_res_block, high_res_block=high_res_block, 
+                        upsampling_block=upsampling_block, post_processing_block=self.post_processing_block)
         self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock, include_mag=include_mag_input)
         self.model = tf.keras.Model(input_layer, self.predictions)
-
         self.model.summary()
-        print("Defined loss metrics", flush=True)
 
         # ===== Metrics =====
         self.loss_metrics = dict([
-            ('train_loss', tf.keras.metrics.Mean(name='train_loss')),
-            ('val_loss', tf.keras.metrics.Mean(name='val_loss')),
+            ('train_loss',     tf.keras.metrics.Mean(name='train_loss')),
+            ('val_loss',       tf.keras.metrics.Mean(name='val_loss')),
             ('train_accuracy', tf.keras.metrics.Mean(name='train_accuracy')),
-            ('val_accuracy', tf.keras.metrics.Mean(name='val_accuracy')),
-            ('train_mse', tf.keras.metrics.Mean(name='train_mse')),
-            ('train_cos_sim', tf.keras.metrics.Mean(name='train_cos_sim')), 
-            ('val_mse', tf.keras.metrics.Mean(name='val_mse')),
-            ('train_div', tf.keras.metrics.Mean(name='train_div')),
-            ('val_div', tf.keras.metrics.Mean(name='val_div')),
-            ('val_cos_sim', tf.keras.metrics.Mean(name='val_cos_sim')), 
-            ('l2_reg_loss', tf.keras.metrics.Mean(name='l2_reg_loss')),
+            ('val_accuracy',   tf.keras.metrics.Mean(name='val_accuracy')),
+            ('train_mse',      tf.keras.metrics.Mean(name='train_mse')),
+            ('train_cos_sim',  tf.keras.metrics.Mean(name='train_cos_sim')), 
+            ('val_mse',        tf.keras.metrics.Mean(name='val_mse')),
+            ('train_div',      tf.keras.metrics.Mean(name='train_div')),
+            ('val_div',        tf.keras.metrics.Mean(name='val_div')),
+            ('val_cos_sim',    tf.keras.metrics.Mean(name='val_cos_sim')), 
+            ('l2_reg_loss',    tf.keras.metrics.Mean(name='l2_reg_loss')),
         ])
         
         self.accuracy_metric = 'val_loss'
-        print("Defined loss metrics2", flush=True)
 
-        print(f"div_weight type: {type(self.div_weight)}, value: {self.div_weight}", flush=True)
-        print(f"accuracy_metric type: {type(self.accuracy_metric)}, value: {self.accuracy_metric}", flush=True)
-
-
-        print(f"Divergence loss2 * {self.div_weight}")
+        print(f"Loss type: {self.loss_type}")
+        print(f"Alpha: {self.alpha}, Epsilon: {self.epsilon}")
+        print(f"Weighting fluid: {self.weighting_fluid}, non-fluid: {self.weighting_non_fluid}")
+        print(f"Separate MSE: {self.separate_mse}")
+        print(f"L2 regularization: {self.L2_regularization}")
         print(f"Accuracy metric: {self.accuracy_metric}")
 
-        # learning rate and training optimizer
-        self.learning_rate = initial_learning_rate
-        
         # Optimizer
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)#, clipnorm=4.0)
+        self.learning_rate = initial_learning_rate
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-        # gradient information
+        # Gradient info
         self.gradient_norm = 0
         self.gradient_threshold = 1
         self.gradient_over_threshold = False
-        
-        # Compile model so we can save the optimizer weights
-        # self.model.compile(loss=self.loss_function, optimizer=self.optimizer)
         
 
     # def save_latest_model(self, epoch):
@@ -288,7 +314,7 @@ class  TrainerController_temporal:
         eps = 0.00005
         return 1 - (u*u_pred + v*v_pred + w*w_pred)/(self.calculate_l2norm(u, v, w)* (self.calculate_l2norm(u_pred, v_pred, w_pred) )+ eps)
 
-    def init_model_dir(self):
+    def init_model_dir(self, config_path=None):
         """
             Create model directory to save the weights with a [network_name]_[datetime] format
             Also prepare logfile and tensorboard summary within the directory.
@@ -302,6 +328,10 @@ class  TrainerController_temporal:
 
         if not os.path.isdir(self.model_dir):
             os.makedirs(self.model_dir)
+
+        if config_path is not None and os.path.exists(config_path):
+            shutil.copy2(config_path, os.path.join(self.model_dir, os.path.basename(config_path)))
+
 
         # summary - Tensorboard stuff
         self._prepare_logfile_and_summary()
@@ -372,16 +402,6 @@ class  TrainerController_temporal:
             lambda: tf.constant(False)
         )
 
-        
-        tf.print("Gradient norm:", grad_norm_tensor)
-        # try: 
-            
-        #     self.gradient_norm = grad_norm_tensor.numpy()
-        # except:
-        #     self.gradient_norm = tf.make_ndarray(tf.make_tensor_proto(grad_norm_tensor))
-
-        # print(f"\nGradient norm: {self.gradient_norm}")
-        # Update the weights
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
     @tf.function
