@@ -12,8 +12,6 @@ import shutil
 import os
 from .STR4DFlowNet_adapted import STR4DFlowNet
 from . import utility, h5util, loss_utils
-from keras.utils.layer_utils import count_params
-
 
 class  TrainerController_temporal:
     # constructor
@@ -38,7 +36,7 @@ class  TrainerController_temporal:
                 weighting_fluid=1.0,
                 weighting_non_fluid=1.0,
                 separate_mse=True,
-                loss_type='l1_projected',
+                loss_type='mse',
                 use_directional_loss=True):
         """
             TrainerController constructor
@@ -50,7 +48,7 @@ class  TrainerController_temporal:
                 weighting_fluid:      Weighting for fluid region loss (default 1.0)
                 weighting_non_fluid:  Weighting for non-fluid region loss (default 1.0)
                 separate_mse:         If True, compute fluid and non-fluid loss separately (default True)
-                loss_type:            Loss function type: 'l1_projected', 'mse', 'mae', 'huber' (default 'l1_projected')
+                loss_type:            Loss function type: ' 'mse', 'mae', 'huber' (default 'mse')
                 use_directional_loss:  If True, use directional loss (default True)
 
             Training params:
@@ -145,6 +143,7 @@ class  TrainerController_temporal:
     #         message = f'Saving current model - {time.ctime()}\n'
     #         print(message)
 
+    #--------LOSS FUNCTIONS ------------
     def loss_function(self, y_true, y_pred, mask):
         """
             Calculate Total Loss function.
@@ -204,13 +203,12 @@ class  TrainerController_temporal:
         non_fluid_mask = tf.less(mask, tf.constant(0.5))
         non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
 
-        epsilon = 1 # minimum 1 pixel
-        
+
         fluid_loss = mse * mask
-        fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
+        fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + self.epsilon)
 
         non_fluid_loss = mse * non_fluid_mask
-        non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + epsilon)
+        non_fluid_loss = tf.reduce_sum(non_fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(non_fluid_mask, axis=[1,2,3]) + self.epsilon)
 
         mse = fluid_loss + non_fluid_loss
         return mse
@@ -225,10 +223,8 @@ class  TrainerController_temporal:
         non_fluid_mask = tf.less(mask, tf.constant(0.5))
         non_fluid_mask = tf.cast(non_fluid_mask, dtype=tf.float32)
 
-        epsilon = 1 # minimum 1 pixel
-        
         fluid_loss = cs * mask
-        fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + epsilon)
+        fluid_loss = tf.reduce_sum(fluid_loss, axis=[1,2,3]) / (tf.reduce_sum(mask, axis=[1,2,3]) + self.epsilon)
 
         return fluid_loss
 
@@ -264,7 +260,7 @@ class  TrainerController_temporal:
 
     def calculate_l1_error(self, u, v, w, u_pred, v_pred, w_pred):
         """
-            Calculate L1 Speed magnitude error
+            Calculate L1 norm
         """
         return tf.abs(u_pred - u) +  tf.abs(v_pred - v) + tf.abs(w_pred - w)
 
@@ -316,6 +312,8 @@ class  TrainerController_temporal:
         eps = 0.00005
         return 1 - (u*u_pred + v*v_pred + w*w_pred)/(self.calculate_l2norm(u, v, w)* (self.calculate_l2norm(u_pred, v_pred, w_pred) )+ eps)
 
+    #--------INIT AND LOGGING------------
+
     def init_model_dir(self, config_path=None):
         """
             Create model directory to save the weights with a [network_name]_[datetime] format
@@ -337,6 +335,7 @@ class  TrainerController_temporal:
         # summary - Tensorboard stuff
         self._prepare_logfile_and_summary()
         print("Model compiled, starting training...")
+
 
     
     def _prepare_logfile_and_summary(self):
@@ -379,6 +378,7 @@ class  TrainerController_temporal:
                     os.makedirs(os.path.dirname(dest_fpath), exist_ok=True)
                     shutil.copy2(f"{directory}/{fname}", dest_fpath)
 
+    #--------TRAINING------------
       
     @tf.function
     def train_step(self, data_pairs):
@@ -484,17 +484,9 @@ class  TrainerController_temporal:
             
             # Reset the metrics at the start of the next epoch
             self.reset_metrics()
-
             start_loop = time.time()
-
             if self.lr_decay_epoch > 0: self.learning_rate_decay(epoch)
 
-            # # Start profiler on a selected epoch
-            # if epoch == 0:
-            #     print("Starting profiler for the first epoch...")
-            #     os.makedirs(self.model_dir + '/tensorboard/profile', exist_ok=True)
-            #     tf.profiler.experimental.start(self.model_dir + '/tensorboard/profile')
-            
             # --- Training ---
             try:
                 for i, (data_pairs) in enumerate(trainset):
@@ -506,9 +498,6 @@ class  TrainerController_temporal:
                         print("Skipping the rest of the training for this epoch.")
                         continue
 
-                    # if self.gradient_over_threshold.numpy():
-                    #     print(f"\nGradient norm too high ({self.gradient_norm}), saving current datapairs")
-                    #     self.save_datapairs(data_pairs, epoch, i)
                     message = f"Epoch {epoch+1} Train batch {i+1}/{total_batch_train} | loss: {self.loss_metrics['train_loss'].result():.5f} ({self.loss_metrics['train_accuracy'].result():.1f} %) - {time.time()-start_loop:.1f} secs - gradient norm: {self.gradient_norm:.5f}"
                     print(f"\r{message}", end='', flush=True)
 
@@ -518,10 +507,6 @@ class  TrainerController_temporal:
                 print("Skipping the rest of the training for this epoch.")
                 continue
 
-            # if epoch == 0:
-            #     print("Stopping profiler for the first epoch...")
-            #     tf.profiler.experimental.stop()
-                
             # --- Validation ---
             for i, (data_pairs) in enumerate(valset):
                 try:
@@ -584,35 +569,20 @@ class  TrainerController_temporal:
         print(message)
         
         # Finish!
+    
+    def _save_model(self, suffix, optimizer_filename):
+        self.model.save(f'{self.model_path}-{suffix}.h5')
+        symbolic_weights = getattr(self.optimizer, 'weights')
+        if symbolic_weights:
+            weight_values = tf.keras.backend.batch_get_value(symbolic_weights)
+            with open(f'{self.model_dir}/{optimizer_filename}', 'wb') as f:
+                pickle.dump(weight_values, f)
         
     def save_best_model(self):
-        """
-            Save model weights and also optmizer weights to enable restore model
-            to continue training
-
-            Based on:
-            https://stackoverflow.com/questions/49503748/save-and-load-model-optimizer-state
-        """
-        # Save model weights.
-        self.model.save(f'{self.model_path}-best.h5')
-        
-        # Save optimizer weights.
-        symbolic_weights = getattr(self.optimizer, 'weights')
-        if symbolic_weights:
-            weight_values = tf.keras.backend.batch_get_value(symbolic_weights)
-            with open(f'{self.model_dir}/optimizer.pkl', 'wb') as f:
-                pickle.dump(weight_values, f)
+        self._save_model('best', 'optimizer.pkl')
 
     def save_latest_model(self):
-        """
-            Save the latest model weights without caring about the performance
-        """
-        self.model.save(f'{self.model_path}-latest.h5')
-        symbolic_weights = getattr(self.optimizer, 'weights')
-        if symbolic_weights:
-            weight_values = tf.keras.backend.batch_get_value(symbolic_weights)
-            with open(f'{self.model_dir}/optimizer_latest.pkl', 'wb') as f:
-                pickle.dump(weight_values, f)
+        self._save_model('latest', 'optimizer_latest.pkl')
 
     def save_datapairs(self, data_pairs, epoch, index_batch):
         """
