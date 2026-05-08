@@ -342,34 +342,39 @@ class  TrainerController_temporal:
         """
             Prepare csv logfile to keep track of the loss and Tensorboard summaries
         """
-        # summary - Tensorboard stuff
-        self.train_writer = tf.summary.create_file_writer(self.model_dir+'/tensorboard/train')
-        self.val_writer = tf.summary.create_file_writer(self.model_dir+'/tensorboard/validate')
+        self.train_writer = tf.summary.create_file_writer(self.model_dir + '/tensorboard/train')
+        self.val_writer   = tf.summary.create_file_writer(self.model_dir + '/tensorboard/validate')
 
-        # Prepare log file
         self.logfile = self.model_dir + '/loss.csv'
 
+        # Log network and training configuration
         utility.log_to_file(self.logfile, f'Network: {self.network_name}\n')
         utility.log_to_file(self.logfile, f'Initial learning rate: {self.learning_rate}\n')
+        utility.log_to_file(self.logfile, f'LR decay epochs: {self.lr_decay_epoch}\n')
+        utility.log_to_file(self.logfile, f'L2 regularization: {self.L2_regularization}\n')
         utility.log_to_file(self.logfile, f'Accuracy metric: {self.accuracy_metric}\n')
-        utility.log_to_file(self.logfile, f'Divergence weight: {self.div_weight}\n')
+        # Log loss configuration
+        utility.log_to_file(self.logfile, f'Loss type: {self.loss_type}\n')
+        utility.log_to_file(self.logfile, f'Alpha: {self.alpha}\n')
+        utility.log_to_file(self.logfile, f'Epsilon: {self.epsilon}\n')
+        utility.log_to_file(self.logfile, f'Weighting fluid: {self.weighting_fluid}\n')
+        utility.log_to_file(self.logfile, f'Weighting non-fluid: {self.weighting_non_fluid}\n')
+        utility.log_to_file(self.logfile, f'Separate MSE: {self.separate_mse}\n')
 
         # Header
-        stat_names = ','.join(self.loss_metrics.keys()) # train and val stat names
+        stat_names = ','.join(self.loss_metrics.keys())
         utility.log_to_file(self.logfile, f'epoch, {stat_names}, learning rate, elapsed (sec), best_model, benchmark_err, benchmark_rel_err, benchmark_mse, benchmark_divloss\n')
 
         print("Copying source code to model directory...")
         base_path = "Temporal4DFlowNet/src/"
         
-        # Copy all the source file to the model dir for backup
-        directory_to_backup = [base_path +".", base_path+ "Network"]
+        directory_to_backup = [base_path + ".", base_path + "Network"]
         for directory in directory_to_backup:
             files = os.listdir(directory)
             for fname in files:
                 if fname.endswith(".py") or fname.endswith(".ipynb"):
-                    dest_fpath = os.path.join(self.model_dir,"backup_source",directory, fname)
+                    dest_fpath = os.path.join(self.model_dir, "backup_source", directory, fname)
                     os.makedirs(os.path.dirname(dest_fpath), exist_ok=True)
-
                     shutil.copy2(f"{directory}/{fname}", dest_fpath)
 
       
