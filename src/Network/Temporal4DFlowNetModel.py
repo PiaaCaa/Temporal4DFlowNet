@@ -5,7 +5,7 @@ This is adapted with code partwise copied from Derek Long: https://github.com/dl
 '''
 
 class STR4DFlowNet():
-    def __init__(self, res_increase, high_res_block='resnet_block',low_res_block='resnet_block', upsampling_block = 'default', post_processing_block = None):
+    def __init__(self, res_increase, high_res_block='resnet_block',low_res_block='resnet_block', upsampling_block = 'linear', post_processing_block = None):
         self.res_increase = res_increase
         self.high_res_block = high_res_block
         self.low_res_block = low_res_block
@@ -230,7 +230,7 @@ def u_net_block(x, num_layers, block_name = 'UnetBlock', channel_nr = 64, pad = 
 
 
 
-#copied from derek
+# copied from derek long - source https://github.com/dlon450/4DFlowNetv2
 def conv_block(x, block_name='ConvBlock', channel_nr=64, pad='SAME'):
     tmp = conv3d(x, kernel_size=3, filters=channel_nr, padding=pad, activation=None, use_bias=False, initialization=None)
     tmp = tf.keras.layers.LeakyReLU(alpha=0.2)(tmp)
@@ -239,7 +239,7 @@ def conv_block(x, block_name='ConvBlock', channel_nr=64, pad='SAME'):
 
     return tmp
 
-#copied from derek
+# copied from derek long - source https://github.com/dlon450/4DFlowNetv2
 def dense_block(x, num_layers, block_name='DenseBlock', channel_nr=64, scale = 1, pad='SAME'):
     k = channel_nr//4
     for _ in range(int(num_layers)):
@@ -248,7 +248,7 @@ def dense_block(x, num_layers, block_name='DenseBlock', channel_nr=64, scale = 1
     
     return x
 
-#copied from derek
+# copied from derek long - source https://github.com/dlon450/4DFlowNetv2
 def csp_block(x, num_layers, block_name='CSPBlock', channel_nr=64, scale = 1, pad='SAME'):
     k = channel_nr//4
     tmp = x[:,:,:,:,:k]
@@ -258,7 +258,7 @@ def csp_block(x, num_layers, block_name='CSPBlock', channel_nr=64, scale = 1, pa
     tmp = tf.concat([x[:,:,:,:,k:], tmp], axis=-1)
     return tmp
 
-# very simple conv lstm block which takes sequences of 2D images and returns sequences of images again
+# 2D LSTM block
 def lstm_block(x, num_layers, block_name='LSTMBlock', channel_nr=64, scale = 1, pad='SAME'):
     for _ in range(num_layers):
         x = tf.keras.layers.ConvLSTM2D(channel_nr, 3, use_bias = False, return_sequences = True, padding = 'same')(x)
