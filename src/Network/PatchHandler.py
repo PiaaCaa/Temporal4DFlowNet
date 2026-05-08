@@ -282,7 +282,7 @@ class PatchHandler4D_preload():
         self.venc_colnames = ['u_max', 'v_max', 'w_max']
         self.mag_colnames = ['mag_u', 'mag_v', 'mag_w']
         self.mask_colname = 'mask'
-        self.colname2number = {'u': 0, 'v': 1, 'w': 2}
+        self.colname2index = {'u': 0, 'v': 1, 'w': 2}
         self.colname_swap = {'u': 'u', 'v': 'v', 'w': 'w'}
         self._find_all_datamodels(csv_file)
         self.lr_files = {}
@@ -461,14 +461,14 @@ class PatchHandler4D_preload():
             lowres_images[2] *= -1
         if swap_u != 'u' or swap_v != 'v':
             temp_images_hr = [
-                hires_images[self.colname2number[swap_u]].copy(),
-                hires_images[self.colname2number[swap_v]].copy(),
-                hires_images[self.colname2number[swap_w]].copy()
+                hires_images[self.colname2index[swap_u]].copy(),
+                hires_images[self.colname2index[swap_v]].copy(),
+                hires_images[self.colname2index[swap_w]].copy()
             ]
             temp_images_lr = [
-                lowres_images[self.colname2number[swap_u]].copy(),
-                lowres_images[self.colname2number[swap_v]].copy(),
-                lowres_images[self.colname2number[swap_w]].copy()
+                lowres_images[self.colname2index[swap_u]].copy(),
+                lowres_images[self.colname2index[swap_v]].copy(),
+                lowres_images[self.colname2index[swap_w]].copy()
             ]
             hires_images[0], hires_images[1], hires_images[2]   = temp_images_hr[0], temp_images_hr[1], temp_images_hr[2]
             lowres_images[0], lowres_images[1], lowres_images[2] = temp_images_lr[0], temp_images_lr[1], temp_images_lr[2]
