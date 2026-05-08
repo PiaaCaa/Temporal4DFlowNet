@@ -15,6 +15,7 @@ pia_utils/*
 src/SpatialSR/*
 src/panel/*
 src/testing/*
+src/notebooks/*
 .vscode/
 venv_setup.txt
 outputfiles/*
@@ -59,3 +60,4 @@ src/notebooks/experimental.ipynb
 src/evaluate_invivo_paired_data_aorta.py
 src/evaluate_insilico_comparison.py
 src/data_specifics/INVIVOII_params.py
+src/utils/settings_aortic_phantom.py
