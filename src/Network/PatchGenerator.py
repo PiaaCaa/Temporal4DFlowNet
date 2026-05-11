@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from utils import ImageDataset_temporal
+from Temporal4DFlowNet.src.utils import ImageDataset
 
 class PatchGenerator():
     def __init__(self, patch_size, res_increase, include_all_axis = False, downsample_input_first = True, downsampling_factor = 2):
@@ -26,7 +26,7 @@ class PatchGenerator():
         self.padding = (0,0,0) 
         if not downsample_input_first: print("Data will NOT get downsampled first for prediction")
 
-    def patchify(self, dataset: ImageDataset_temporal):
+    def patchify(self, dataset: ImageDataset):
         """
             Create overlapping patch of size of patch_size
             On LR, we exclude 2 px from each side, effectively the size being used is patch_size-4
