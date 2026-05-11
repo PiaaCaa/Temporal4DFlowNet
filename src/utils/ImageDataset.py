@@ -1,10 +1,11 @@
 import h5py
 import numpy as np
+import matplotlib.pyplot as plt
 
 class ImageDataset():
-    def __init__(self):
+    def __init__(self, venc_colnames = ['venc_u', 'venc_v', 'venc_w']):
         self.velocity_colnames   = ['u', 'v', 'w']
-        self.venc_colnames = ['venc_u', 'venc_v', 'venc_w']
+        self.venc_colnames = venc_colnames
         self.mag_colnames  = ['mag_u', 'mag_v', 'mag_w']
         self.dx_colname = 'dx'
 
@@ -27,6 +28,7 @@ class ImageDataset():
 
         # Keep the venc to denormalized data
         self.venc = venc.astype('float32')
+
         # Calculate PX sensitivity to zero out the predictions later 
         self.velocity_per_px = self.venc / 2048
         self.dx = dx
@@ -44,12 +46,15 @@ class ImageDataset():
             results[np.abs(results) < self.velocity_per_px] = 0
         return results
 
-    def get_dataset_len(self, filepath):
+    def get_dataset_len(self, filepath, axis=0):
         with h5py.File(filepath, 'r') as hl:
-            data_size = hl[self.velocity_colnames[0]].shape[0]
+            data_size = np.asarray(hl[self.velocity_colnames[0]]).squeeze().shape[axis +1]
+            
         return data_size
-   
-    def load_vectorfield(self, filepath, idx):
+    
+
+
+    def load_vectorfield(self, filepath, idx, axis = 0): 
         '''
             Override the load u v w data by adding some padding in xy planes
         '''
@@ -61,14 +66,22 @@ class ImageDataset():
 
         # Load the U, V, W component of LR, and MAG
         with h5py.File(filepath, 'r') as hl:
-            if self.dx_colname in hl:
-                dx = hl.get(self.dx_colname)[idx]
-
-            for i in range(len(self.velocity_colnames)):              
-                w = np.asarray(hl.get(self.velocity_colnames[i])[idx])
-                mag_w = np.asarray(hl.get(self.mag_colnames[i])[idx])
-                w_venc = np.asarray(hl.get(self.venc_colnames[i])[idx])
             
+            for i in range(len(self.velocity_colnames)):
+                
+                if axis == 0:
+                    idx_vol = np.index_exp[:, idx, :, :]
+                elif axis == 1:
+                    idx_vol = np.index_exp[:, :, idx, :]
+                elif axis == 2: 
+                    idx_vol = np.index_exp[:, :, :, idx]
+
+                w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[idx_vol]
+                mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()[idx_vol]
+
+                
+                w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
+
                 # add them to the list
                 lowres_images.append(w)
                 mag_images.append(mag_w)

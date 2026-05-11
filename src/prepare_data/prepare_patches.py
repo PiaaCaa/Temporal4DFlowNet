@@ -1,64 +1,122 @@
 import numpy as np
 import h5py
 import PatchData as pd
-
-# def load_data(input_filepath):
-#     with h5py.File(input_filepath, mode = 'r' ) as hdf5:
-#         data_nr = len(hdf5['u'])
-
-#     indexes = np.arange(data_nr)
-#     print("Dataset: {} rows".format(len(indexes)))
-#     return indexes
-
-def load_temporal_data(input_filepath):
-    with h5py.File(input_filepath, mode = 'r' ) as hdf5:
-        data_nr = hdf5['u'].shape[1]
-
-    indexes = np.arange(data_nr)
-    print("Dataset: {} rows".format(len(indexes)))
-    return indexes
+import os
+import argparse
+import yaml
+import shutil
 
 
-if __name__ == "__main__": 
-    temporal_preparation = True
-    patch_size = 14 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
-    n_patch = 10    # number of patch per time frame
-    n_empty_patch_allowed = 0 # max number of empty patch per frame
-    all_rotation = False # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation.
-    mask_threshold = 0.4 # Threshold for non-binary mask 
-    minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
-    
-    
-    base_path = 'Temporal4DFlowNet/data/CARDIAC'
-    lr_file = 'M1_2mm_step2_static_TLR_no_noise.h5' #LowRes velocity data
-    hr_file = 'M1_2mm_step2_static.h5' #HiRes velocity data
-    output_filename = f'{base_path}/Temporal{patch_size}MODEL1_2mm_step2_no_noise.csv'
+def load_config(config_path):
+    """Load YAML config file."""
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
-    
-    # Load the data
-    input_filepath = f'{base_path}/{lr_file}'
-    file_indexes = load_temporal_data(input_filepath)
-    
-    # Prepare the CSV output
+def determine_step_t(t_lr, t_hr):
+    """
+    Determine temporal step size based on LR and HR frame counts.
+    If equal, LR is downsampled on the fly (step_t=2).
+    If HR has 2x frames, LR is already downsampled (step_t=1).
+    """
+    if t_hr == t_lr:
+        print('Same number of frames in LR and HR — downsampling on the fly (step_t=2).')
+        return 2, 1
+    else:
+        print('HR has more frames than LR — LR is already downsampled (step_t=1).')
+        return 1, 2
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Prepare patches for temporal super-resolution training.")
+    parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
+    parser.add_argument("--lrdata", type=str, help="Optional override for LR data filename")
+    parser.add_argument("--hrdata", type=str, help="Optional override for HR data filename")
+    args = parser.parse_args()
+
+    cfg = load_config(args.config)
+
+    # ---- Paths ----
+    base_path = cfg['base_path']
+    lr_file   = args.lrdata if args.lrdata else cfg['lr_file']
+    hr_file   = args.hrdata if args.hrdata else cfg['hr_file']
+    csv_dir   = f"{base_path}/csv_files"
+    os.makedirs(csv_dir, exist_ok=True)
+    output_filename = f"{csv_dir}/{cfg['output_filename']}"
+
+    lr_path = f"{base_path}/{lr_file}"
+    hr_path = f"{base_path}/{hr_file}"
+
+    # ---- Patch settings ----
+    spatial_patch_size  = cfg['spatial_patch_size']
+    temporal_patch_size = cfg['temporal_patch_size']
+    n_patch             = cfg['n_patch']
+    minimum_coverage    = cfg['minimum_coverage']
+    n_empty_patch_allowed = cfg['n_empty_patch_allowed']
+    mask_threshold      = cfg['mask_threshold']
+
+    # ---- Augmentation settings ----
+    save_nonaugmented_patch                  = cfg['save_nonaugmented_patch']
+    n_patches_augmented_from_original_patch  = cfg['n_patches_augmented_from_original_patch']
+    random_w_orientation                     = cfg.get('random_w_orientation', False)
+
+    # ---- Verify files exist ----
+    assert os.path.isfile(lr_path), f"LR file not found: {lr_path}"
+    assert os.path.isfile(hr_path), f"HR file not found: {hr_path}"
+    print(f"LR file: {lr_path}")
+    print(f"HR file: {hr_path}")
+
+    # ---- Load data shapes and masks ----
+    with h5py.File(lr_path, mode='r') as hdf5:
+        t_lr, x_lr, y_lr, z_lr = hdf5['u'].shape
+        mask_lr = np.asarray(hdf5['mask']).squeeze()
+        if len(mask_lr.shape) == 3:
+            mask_lr = pd.create_temporal_mask(mask_lr, t_lr)
+
+    with h5py.File(hr_path, 'r') as hf:
+        t_hr, x_hr, y_hr, z_hr = hf['u'].shape
+        mask_hr = np.asarray(hf['mask']).squeeze()
+
+    print(f"LR shape: {t_lr, x_lr, y_lr, z_lr}")
+    print(f"HR shape: {t_hr, x_hr, y_hr, z_hr}")
+
+    # ---- Determine step size and validate ----
+    step_t, check_t = determine_step_t(t_lr, t_hr)
+
+    assert (x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr), "Spatial dimensions of LR and HR must match"
+    assert np.sum(np.abs(mask_lr - mask_hr[::check_t])) == 0, "LR and HR masks do not match after temporal alignment"
+
+    # ---- Prepare binary mask ----
+    binary_mask = (mask_lr >= mask_threshold) * 1
+    print(f"Binary mask shape: {binary_mask.shape}")
+
+    # ---- Write CSV header and save settings ----
     pd.write_header(output_filename)
+    pd.save_settings_json(
+        lr_file, hr_file, output_filename, n_patch, binary_mask,
+        spatial_patch_size, temporal_patch_size, minimum_coverage, n_empty_patch_allowed,
+        step_t, save_nonaugmented_patch, n_patches_augmented_from_original_patch,
+        random_w_orientation
+    )
 
-    # because the data is homogenous in 1 table, we only need the first data
-    with h5py.File(input_filepath, mode = 'r' ) as hdf5:
-        mask = np.asarray(hdf5['mask'][0])
-        frames = hdf5["u"].shape[0]
+    # ---- Generate patches for all axes ----
+    axis_labels = {0: '(t, y, z)', 1: '(t, x, z)', 2: '(t, x, y)'}
+    axis_ranges = {0: range(1, x_lr), 1: range(1, y_lr), 2: range(1, z_lr)}
 
-    # We basically need the mask on the lowres data, the patches index are retrieved based on the LR data.
-    print("Overall shape", mask.shape)
+    for axis in [0, 1, 2]:
+        print(f"______ Creating patches for {axis_labels[axis]} slices _____________")
+        for idx in axis_ranges[axis]:
+            pd.generate_patches(
+                lr_file, hr_file, output_filename, axis, idx,
+                n_patch, binary_mask, spatial_patch_size, temporal_patch_size,
+                minimum_coverage, n_empty_patch_allowed,
+                step_t=step_t,
+                save_nonaugmented_patch=save_nonaugmented_patch,
+                n_patches_augmented_from_original_patch=n_patches_augmented_from_original_patch,
+                random_w_orientation=random_w_orientation
+            )
 
-    # Do the thresholding
-    binary_mask = (mask >= mask_threshold) * 1
-    if temporal_preparation: binary_mask = pd.create_temporal_mask(binary_mask, frames)
+    # ---- Save this config for reproducibility ----
+    config_backup = os.path.join(csv_dir, os.path.splitext(cfg['output_filename'])[0] + '_config.yaml')
+    shutil.copy2(args.config, config_backup)
 
-    # Generate random patches for all time frames
-    for index in file_indexes:
-        print('Generating patches for row', index)
-        if temporal_preparation:
-            pd.generate_temporal_random_patches(lr_file, hr_file, output_filename, index, frames, n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, all_rotation)
-        else:
-            pd.generate_random_patches(lr_file, hr_file, output_filename, index, n_patch, binary_mask, patch_size, minimum_coverage, n_empty_patch_allowed, all_rotation)
-    print(f'Done. File saved in {output_filename}')
+    print(f"Done. Patches saved to {output_filename}")

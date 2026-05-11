@@ -1,205 +1,137 @@
-# Temporal 4DFlowNet
-Super Resolution 4D Flow MRI using Residual Neural Network
+# Temporal4DFlowNet - Deep learning for temporal super-resolution 4D Flow MRI
+A residual CNN for temporal super-resolution of 4D Flow MRI data.
+This repository extends [4DFlowNet](https://github.com/EdwardFerdian/4DFlowNet) ([Link to paper](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full)) from spatial to **temporal** super-resolution.
 
-<!-- This repsository includes an implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) using Tensorflow 2.9.0 with Keras.  -->
-<!-- In addition, there is an implementation for a temporal instead of a spatial-super resolution problem. -->
+📄 **Paper**: [Deep learning for temporal super-resolution 4D Flow MRI](https://pubmed.ncbi.nlm.nih.gov/41880246/)
 
-This is an extension of the repository [4DFlowNet](https://gitlab.eecs.umich.edu/bkhardy/4DFlowNet), which includes the implementation of the paper [4DFlowNet: Super-Resolution 4D Flow MRI](https://www.frontiersin.org/articles/10.3389/fphy.2020.00138/full) concerning spatial super resolution problem. 
-This implemenational in focusing on increasing the temporal resolution of the CFD 4D Flow MRI data. 
+---
 
+<!-- ## Method Overview
+![Adapted 4DFlowNet Architecture](examples/architecture.png)
+*Overview of the Temporal4DFlowNet architecture.*
 
-# Example results
-![Animate_w_Validation_1_fluid](https://user-images.githubusercontent.com/102809405/230336042-8f6a6f9a-49e5-42e5-82f0-8b75d91a1a43.gif)
+---
 
+## Example Results
+![Example result](https://github.com/PiaaCaa/Temporal4DFlowNet/blob/main/examples/Test_M4_Animate_u__HR_SR_LR_Test.gif?raw=true) -->
 
-<!-- Below are example prediction results from an actual 4D Flow MRI of a bifurcation phantom dataset. 
+---
 
-LowRes input (voxel size 4mm)
-<p align="left">
-    <img src="https://i.imgur.com/O48FbAh.gif" width="330">
-</p>
+## Requirements
+- Python 3.8.10
+- TensorFlow 2.9.1 
+- See `requirements.txt` for full dependencies
 
-High Res Ground Truth vs noise-free Super Resolution (2mm)
-<p align="left">
-    <img src="https://i.imgur.com/67CRdGn.gif" width="350">
-</p>
+---
 
-High Res Ground Truth vs noise-free Super Resolution (1mm)
-<p align="left">
-    <img src="https://i.imgur.com/DMQa2Lr.gif" width="350">
-</p> -->
+## Installation
+```bash
+git clone https://github.com/PiaaCaa/Temporal4DFlowNet.git
+cd Temporal4DFlowNet
+pip install -r requirements.txt
+```
 
-<!-- # Enviroment Setup
-Because Big Blue's default python interpreter is shared by everyone, I use venv
-in order to create a personal environment that won't mess with C Heart or other
-important codes. When your venv is activated, all changes made to the python environment
-will be applied to your own personal profile, allowing you to make edits/explore code 
-without worrying about affecting others.
+---
 
-1. Creating your virtual environment:
+## Data
 
-    Navigate to your home directory and type into the terminal: 
+### Example data
+Example high-resolution 4D Flow MRI data can be obtained from the original [4DFlowNet repository](https://github.com/EdwardFerdian/4DFlowNet).
+This data needs to be processed through the pipeline first (see **Usage** below) to generate the low-resolution input data before training or prediction.
 
-    <code>python3 -m venv ./venv </code>
+### Data format
+All data should be in HDF5 format with the following structure:
 
-    The files associated with your virtual environment should now be stored under 
-    a directory called "venv".
+| Field | Description | Shape |
+|-------|-------------|-------|
+| `u`, `v`, `w` | Velocity components | `(t, x, y, z)` |
+| `mask` | Binary mask | `(t, x, y, z)` or `(x, y, z)` |
+| `u_max`, `v_max`, `w_max` | VENC values | scalar |
+| `mag_u`, `mag_v`, `mag_w` | Magnitude images (optional) | `(t, x, y, z)` |
 
-2. Activating your virtual environment:
+### Preparing your own data
+If you want to use your own 4D Flow MRI data, prepare it in the HDF5 format above before running `prepare_patches.py`. The low-resolution input can either be:
+- **Already downsampled** in time — set `step_t: 1` in the patch config
+- **Downsampled on the fly** from a full-resolution file — set `step_t: 2`
 
-    This part is slightly trickier as it depends on your current working directory. Assuming
-    that you are still in your home directory, your venv can be activated with
+---
 
-    <code>source venv/bin/activate </code>
+## Configuration
+All scripts are configured via YAML config files. Templates are provided in `config/`:
+```
+config/
+├── train.example.yaml            # Training configuration
+├── prepare_patches.example.yaml  # Patch generation configuration
+└── predict.example.yaml          # Prediction configuration
+```
 
-    You should now see <code>(venv)</code> in your terminal window. If you are in another directory, the general
-    format of the activation command is
+Copy and edit the relevant template before running:
+```bash
+cp config/train.example.yaml config/train.yaml
+# Edit config/train.yaml with your local paths and parameters
+```
+Config files are excluded from version control — only the example templates are committed.
 
-    <code>source path/to/venv/bin/activate </code>
+---
 
-3) Deactivating your virtual environment:
+## Usage
 
-    Simply type <code>deactivate</code> and venv will deactivate.
+### 1. Prepare low-resolution data
+Generate a low-resolution HDF5 file from a high-resolution dataset:
+```bash
+python prepare_data/prepare_temporal_lowres_dataset.py
+```
+This creates a temporally downsampled version of the high-resolution data to use as LR input.
 
-4) Installing relevant python packages:
+### 2. Generate training patches
+```bash
+python prepare_patches.py --config config/prepare_patches.yaml
+```
+This generates a CSV file with patch indices used during training.
 
-    When your venv is activated, type in the command
+Key parameters:
 
-    <code>pip install -r requirements.txt</code>
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `spatial_patch_size` | Spatial patch size | `16` |
+| `temporal_patch_size` | Temporal patch size | `16` |
+| `n_patch` | Patches per slice | `10` |
+| `minimum_coverage` | Minimum fluid coverage per patch | `0.2` |
+| `n_patches_augmented_from_original_patch` | Augmented versions per patch (max 6) | `4` |
+| `save_nonaugmented_patch` | Also save the original patch | `true` |
 
-    This assumes that requirements.txt is in your current working directory. You can find requirements.txt
-    in the 4DFlowNet base directory. Currently there is only one requirement that covers everything, but I will
-    add to this file if anything else comes up. This will help to prevent package version conflicts between everyone.
+### 3. Train
+```bash
+python train.py --config config/train.yaml
+```
 
-    Your virtual environment should now be ready to run 4DFlowNet. For other questions (such as setting a default 
-    interpreter in VS Code, etc.) you can reach me at bkhardy@umich.edu! -->
+Key parameters:
 
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `patch_size` | Patch size `[t, x, y]` | `[16, 16, 16]` |
+| `res_increase` | Temporal upsampling factor | `2` |
+| `batch_size` | Training batch size | `32` |
+| `initial_learning_rate` | Initial learning rate | `1e-4` |
+| `epochs` | Number of training epochs | `100` |
+| `n_low_resblock` | Residual blocks in LR space | `8` |
+| `n_hi_resblock` | Residual blocks in HR space | `4` |
+| `upsampling_block` | Upsampling method (`linear`, `nearest_neighbor`, `conv3d_transpose`) | `linear` |
+| `loss_type` | Base loss function (`mse`, `mae`, `huber`) | `mse` |
+| `use_directional_loss` | Add physics-informed directional loss term | `true` |
+| `preload_data` | Load all data into RAM at init (faster, requires more memory) | `false` |
 
-# General training setup from CFD data for temporal 
+Model weights, training logs, source backup, and config are saved automatically to `models/`.
 
-## Prepare dataset
-
-To prepare training or validation dataset, we assume a High resolution CFD dataset is available. As an example we have provided this under TODO
-
-How to prepare training/validation dataset.
-
-    1. Generate lowres dataset
-        >> Configure the datapath and filenames in prepare_temporal_lowres_dataset.py
-        >> Run prepare_temporal_lowres_dataset.py
-        >> This will generate a separate HDF5 file for the low resolution velocity data.
-    2. Generate random patches from the LR-HR dataset pairs.
-        >> Configure the datapath and filenames in prepare_patches.py
-        >> For temporal problem, set .. to True. 
-        >> Configure patch_size, rotation option, and number of patches per frame
-        >> Run prepare_patches.py
-        >> This will generate a csv file that contains the patch information.
-
-## Training
-
-The trainer accepts csv files to define training and validation. A benchmark set is used to keep prediction progress everytime a model is being saved as checkpoint. Example csv files are provided in the /data folder. TODO
-
-To train a new 4DFlowNet Network:
-
-    1. Put all data files (HDF5) and CSV patch index files in the same directory (e.g. /data)
-    2. Open trainer_temporal.py and configure the data_dir and the csv filenames
-    3. Adjust hyperparameters. The default values from the paper are already provided in the code.
-    4. Run trainer_temporal.py
-
-Adjustable parameters:
-
-|Parameter  | Description   |
-|------|--------------|
-| patch_size| The input low resolution image will be split into isotropic patches. Adjust according to computation power and image size |
-| res_increase| Upsample ratio. Adjustable to any integer. More upsample ratio requires more computation power. *Note*: res_increase=1 will denoise the image at the current resolution |
-| batch_size| Batch size per prediction. Keep it low. |
-| initial_learning_rate| Initial learning rate |
-| epochs | number of epochs |
-| mask_threshold| Mask threshold for non-binary mask. This is used to measure relative error (accuracy) |
-| network_name | The network name. The model will be saved in this name_timestamp format |
-|QUICKSAVE| Option to run a "bechmark" dataset everytime a model is saved |
-|benchmark_file| A patch index file (CSV) contains a list of patches. Only the first batch will be read and run into prediction. |
-| low_resblock | Number of residual blocks in low resolution space within 4DFlowNet. |
-| hi_resblock | Number of residual blocks in high resolution space within 4DFlowNet. |
-
-
-## Standard Aortic Training Setup
-|Parameter  | Value   |
-|------|--------------|
-| patch_size| 16 |
-| res_increase| 2 |
-| batch_size| 20 |
-| initial_learning_rate| 1e-4 |
-| epochs | 150 |
-| mask_threshold| 0.6 |
-| network_name | 4DFlowNet-aortic |
-|QUICKSAVE| True |
-|training_file| aorta0102_patches.csv |
-|validate_file| aorta03_patches.csv |
-|benchmark_file| aorta03_patches.csv |
-| low_resblock | 8 |
-| hi_resblock | 4 |
-
-<!-- ## Standard Cerebrovascular Training Setup
-|Parameter  | Value   |
-|------|--------------|
-| patch_size| 12 |
-| res_increase| 2 |
-| batch_size| 20 |
-| initial_learning_rate| 2e-4 |
-| epochs | 60 |
-| mask_threshold| 0.6 |
-| network_name | 4DFlowNet-cerebro |
-|QUICKSAVE| True |
-|training_file| newtrain12.csv |
-|validate_file| newval12.csv |
-|benchmark_file| newbenchmark12.csv |
-| low_resblock | 8 |
-| hi_resblock | 4 | -->
+### 4. Predict
+```bash
+python predict.py --config config/predict.yaml
+```
 
 
-<!-- # Running prediction on MRI data
-## Prepare data from MRI (for prediction purpose)
-*NOTE*: all of the provided datasets are already in HDF5 format, making this step unnecessary for current use cases.
-To prepare 4D Flow MRI data to HDF5, go to the prepare_data/ directory and run the following script:
+Set `downsample_input_first: true` for paired in-vivo data where you want to downsample first and compare directly to the acquired resolution.
 
-    >> python prepare_data.py --input-dir [4DFlowMRI_CASE_DIRECTORY]
+---
 
-    >> usage: prepare_mri_data.py [-h] --input-dir INPUT_DIR
-                           [--output-dir OUTPUT_DIR]
-                           [--output-filename OUTPUT_FILENAME]
-                           [--phase-pattern PHASE_PATTERN]
-                           [--mag-pattern MAG_PATTERN] [--fh-mul FH_MUL]
-                           [--rl-mul RL_MUL] [--in-mul IN_MUL] 
-
-Notes: 
-*  The directory must contains the following structure:
-    [CASE_NAME]/[Magnitude_or_Phase]/[TriggerTime]
-* There must be exactly 3 Phase and 3 Magnitude directories 
-* To get the required directory structure, [DicomSort](https://dicomsort.com/) is recommended. Sort by SeriesDescription -> TriggerTime.
-* In our case, VENC and velocity direction is read from the SequenceName DICOM HEADER. Code might need to be adjusted if the criteria is different. -->
-
-## Prediction
-
-To run a prediction:
-
-    1. Go to src/ and open predictor_temporal.py and configure the input_filename and output_filename if necessary
-    2. Run predictor_temporal.py
-
-Adjustable parameters:
-
-|Param  | Description   | Default|
-|------|--------------|--------:|
-| patch_size| The image will be split into isotropic patches. Adjust according to computation power and image size.  | 24|
-| res_increase| Upsample ratio. Adjustable to any integer. More upsample ratio requires more computation power. *Note*: res_increase=1 will denoise the image at the current resolution |2|
-| batch_size| Batch size per prediction. Keep it low. |8|
-| round_small_values|Small values are rounded down to zero. Small value is calculated based on venc, according to Velocity per 1 pixel value = venc/2048 |True|
-| low_resblock | Number of residual blocks in low resolution space within 4DFlowNet. |8|
-| hi_resblock | Number of residual blocks in high resolution space within 4DFlowNet. |4|
-
-
-
-<!-- ## Contact Information
-
-If you encounter any problems, feel free to contact me by email.
-
-Pia Callmer -->
+## Contact
+For questions or issues, contact pia.callmer@ki.se or open a GitHub issue.
