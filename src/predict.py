@@ -159,11 +159,9 @@ if __name__ == '__main__':
                 print(f"\nSlice ({nrow+1}/{nr_rows}) - {time.ctime()}")
 
                 dataset.load_vectorfield(input_filepath, nrow, axis=a)
-                print(f"Slice shape: {dataset.u.shape}")
 
                 velocities, magnitudes = pgen.patchify(dataset)
                 data_size = len(velocities[0])
-                print(f"Nr of patches: {data_size}")
 
                 results = np.zeros((0, patch_size_tuple[0] * res_increase,
                                     patch_size_tuple[1], patch_size_tuple[2], 3))
