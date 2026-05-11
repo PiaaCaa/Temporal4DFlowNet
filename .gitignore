@@ -1,66 +1,47 @@
-# Byte-compiled / optimized / DLL files
+# ===== Python =====
 __pycache__/
 *.py[cod]
 *$py.class
+
+# ===== Logs and job files =====
 *.log
 *.out
 *.err
 *.sbatch
 *.sh
+
+# ===== Data and results (not versioned) =====
 models/
-4DFlowNet/*
-data/*
-results/*
-pia_utils/*
-src/SpatialSR/*
-src/panel/*
-src/testing/*
-src/notebooks/*
-.vscode/
-venv_setup.txt
-outputfiles/*
-my_job.sbatch
-training.sbatch
+data/
+results/
 *.h5
-prediction_multiplefiles.sh
-OLD_README.md
-src/create_patch_csvs_win.sh
-src/create_patch_csvs.sh
-src/utils/recover_fcts.py
-src/test3.py
-src/test4.py
-src/prepare_data/cfl.py
-src/test5_cs_cfltoh5.py
-src/test3_merge_cs_data.py
-src/test6_invivomag_to_insilicovel.py
-pia_utils/test10_load_paired_invivo.py
-pia_utils/test12_merge_segmentation_with_vel.py
-pia_utils/test13_reorient_and_transpose_invivo.py
-pia_utils/test13b_swap_vel_directions_invivo.py
-pia_utils/test14_adjust_venc_invivo.py
-pia_utils/test14b_adjust_venc_insilico.py
-pia_utils/test15_create_lr_hr_dataset.py
-pia_utils/test16_correct_M2_boundaries.py
-pia_utils/test10_load_paired_invivo.py
-pia_utils/test6_invivomag_to_insilicovel_lr.py
-pia_utils/test6b_merge_invivomag_with_insilicovel_lr.py
-pia_utils/test6c_invivomag_to_insilicovel_lr_diff_temporalresolutions.py
-pia_utils/test17_concatenate_csv_files.py
-pia_utils/test18_smooth_and_erode_mask.py
-pia_utils/test19_smooth_LV_aorta_mask.py
-pia_utils/test6_invivomag_to_insilicovel_lr.py
-src/notebooks/anti_aliasing.ipynb
-pia_utils/test12_ajust_insilico_venc.py
-pia_utils/test18_smooth_and_erode_invivo_mask.py
-pia_utils/test19_make_aorta_and_lv_mask_smooth.py
-pia_utils/test20_evaluate_on_patches.py
-pia_utils/test21_include_hb_invivo.py
-src/notebooks/data_inspection_copied.ipynb
-src/notebooks/experimental.ipynb
-src/evaluate_invivo_paired_data_aorta.py
-src/evaluate_insilico_comparison.py
-src/data_specifics/INVIVOII_params.py
-src/utils/settings_aortic_phantom.py
+
+# ===== Local/personal utility folders =====
+pia_utils/
+4DFlowNet/
+
+# ===== Source subfolders not for release =====
+src/SpatialSR/
+src/panel/
+src/testing/
+src/notebooks/
+src/test*.py
+
+# ===== Config files (use .example.yaml templates instead) =====
 configs/train.yaml
 configs/predict_config.yaml
 configs/prepare_patches.yaml
+
+# ===== IDE =====
+.vscode/
+
+# ===== Misc =====
+venv_setup.txt
+outputfiles/
+OLD_README.md
+src/evaluate_invivo_paired_data_aorta.py
+src/evaluate_insilico_comparison.py
+src/data_specifics/
+src/utils/settings_aortic_phantom.py
+src/utils/recover_fcts.py
+src/prepare_data/cfl.py
