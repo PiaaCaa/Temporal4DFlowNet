@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import os
-from Network.STR4DFlowNet_adapted import STR4DFlowNet
+from Network.Temporal4DFlowNetModel import STR4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 from utils.ImageDataset_temporal import ImageDataset_temporal
