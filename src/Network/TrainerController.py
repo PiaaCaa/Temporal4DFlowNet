@@ -270,7 +270,7 @@ class  TrainerController:
         """
         return tf.sqrt(u ** 2 + v ** 2 + w ** 2)
 
-    def calculate_relative_error(self, u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
+    def calculate_relative_error(self, u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask, threshold = 0.5):
         # if epsilon is set to 0, we will get nan and inf
         epsilon = 1e-5
 
@@ -293,7 +293,7 @@ class  TrainerController:
         corrected_speed_loss = tf.round(corrected_speed_loss * multiplier) / multiplier
         
         # Apply mask
-        binary_mask_condition = (mask > threshold)
+        binary_mask_condition = (binary_mask > threshold)
         # binary_mask_condition = tf.equal(binary_mask, 1.0)          
         corrected_speed_loss = tf.where(binary_mask_condition, corrected_speed_loss, tf.zeros_like(corrected_speed_loss))
 
