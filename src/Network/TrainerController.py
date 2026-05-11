@@ -10,7 +10,7 @@ import datetime
 import time
 import shutil
 import os
-from .STR4DFlowNet_adapted import STR4DFlowNet
+from .Temporal4DFlowNetModel import STR4DFlowNet
 from . import utility, h5util, loss_utils
 
 class  TrainerController:
