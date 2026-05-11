@@ -28,7 +28,7 @@ class ImageDataset():
 
         # Keep the venc to denormalized data
         self.venc = venc.astype('float32')
-        print('Venc is set to ', venc)
+
         # Calculate PX sensitivity to zero out the predictions later 
         self.velocity_per_px = self.venc / 2048
         self.dx = dx
