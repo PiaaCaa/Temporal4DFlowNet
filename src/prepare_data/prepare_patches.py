@@ -3,143 +3,129 @@ import h5py
 import PatchData as pd
 import os
 import argparse
+import yaml
+import shutil
+
+
+def load_config(config_path):
+    """Load YAML config file."""
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
+
 
 def load_data_shape(input_filepath):
-    with h5py.File(input_filepath, mode = 'r' ) as hdf5:
+    """Load and print dataset shape from HDF5 file."""
+    with h5py.File(input_filepath, mode='r') as hdf5:
         t, x, y, z = hdf5['u'].shape
+    print(f"Dataset of size: {t, x, y, z}")
+    return t, x, y, z
 
-    print(f"Dataset of size: {t, x, y, z} ")
-    return t, x, y, z 
 
+def determine_step_t(t_lr, t_hr):
+    """
+    Determine temporal step size based on LR and HR frame counts.
+    If equal, LR is downsampled on the fly (step_t=2).
+    If HR has 2x frames, LR is already downsampled (step_t=1).
+    """
+    if t_hr == t_lr:
+        print('Same number of frames in LR and HR — downsampling on the fly (step_t=2).')
+        return 2, 1
+    else:
+        print('HR has more frames than LR — LR is already downsampled (step_t=1).')
+        return 1, 2
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description="My script description")
-    parser.add_argument("--lrdata", type=str, help="Optional argument to pass the name of LR data")
-    parser.add_argument("--hrdata", type=str, help="Optional argument to pass the name of HR data")
+    parser = argparse.ArgumentParser(description="Prepare patches for temporal super-resolution training.")
+    parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
+    parser.add_argument("--lrdata", type=str, help="Optional override for LR data filename")
+    parser.add_argument("--hrdata", type=str, help="Optional override for HR data filename")
     args = parser.parse_args()
 
-    if args.lrdata is not None and args.hrdata is not None:
-        print(f"Data model is {args.lrdata}")
-        lr_file = args.lrdata
-        hr_file = args.hrdata
-    else:
-        hr_file = 'M1_2mm_step2_cs_invivoP01_TODO.h5'       #HiRes velocity data
-        lr_file = 'M1_2mm_step2_cs_invivoD_TODO.h5'         #LowRes velocity data 
+    cfg = load_config(args.config)
 
-    # Parameters
-    temporal_preparation = True
-    spatial_patch_size = 16 # Patch size, this will be checked to make sure the generated patches do not go out of bounds
-    
-    n_patch = 10    # number of patch per time frame
-    n_empty_patch_allowed = 1 # max number of empty patch per frame
-    all_rotation = True # When true, include 90,180, and 270 rotation for each patch. When False, only include 1 random rotation. (not possible for temporal sampling)
-    reverse_1 = True
-    extended_data_augmentation = True
+    # ---- Paths ----
+    base_path = cfg['base_path']
+    lr_file   = args.lrdata if args.lrdata else cfg['lr_file']
+    hr_file   = args.hrdata if args.hrdata else cfg['hr_file']
+    csv_dir   = f"{base_path}/csv_files"
+    os.makedirs(csv_dir, exist_ok=True)
+    output_filename = f"{csv_dir}/{cfg['output_filename']}"
 
-    # extended data augmentation parameters
-    if extended_data_augmentation:
-        # general augmentation parameters
-        temporal_patch_size = 16
-        all_rotation = True
-        swap_velocity_components = True
-        change_sign_velocity_components = True
-        reverse_1 = reverse_1# if reverese_1 is true we enable both flipping in vertical and horizontal direction
-        # specific augmentation parameters
-        save_nonaugmented_patch = True
-        n_patches_augmented_from_original_patch = 4
-        only_choose_apply_one_augmentation_technique=True
-        sign_change_on_all_components = True 
-    
-    mask_threshold = 0.5 # Threshold for non-binary mask 
-    minimum_coverage = 0.2 # Minimum fluid region within a patch. Any patch with less than this coverage will not be taken. Range 0-1
+    lr_path = f"{base_path}/{lr_file}"
+    hr_path = f"{base_path}/{hr_file}"
 
-    base_path = '/mnt/c/Users/piacal/Code/SuperResolution4DFlowMRI/Temporal4DFlowNet/data/CARDIAC'
-    output_filename = f'{base_path}/csv_files/Temporal{spatial_patch_size}MODEL{hr_file[1]}_2mm_step2_cs_invivomagn_exclfirst2frames_tpatchsize16_augmentation1-4_with_orig_lessnoise.csv'
+    # ---- Patch settings ----
+    spatial_patch_size  = cfg['spatial_patch_size']
+    temporal_patch_size = cfg['temporal_patch_size']
+    n_patch             = cfg['n_patch']
+    minimum_coverage    = cfg['minimum_coverage']
+    n_empty_patch_allowed = cfg['n_empty_patch_allowed']
+    mask_threshold      = cfg['mask_threshold']
 
-    # Check if the files exist  
-    assert(os.path.isfile(f'{base_path}/{hr_file}'))    # HR file does not exist
-    assert(os.path.isfile(f'{base_path}/{lr_file}'))    # LR file does not exist 
+    # ---- Augmentation settings ----
+    save_nonaugmented_patch                  = cfg['save_nonaugmented_patch']
+    n_patches_augmented_from_original_patch  = cfg['n_patches_augmented_from_original_patch']
+    random_w_orientation                     = cfg.get('random_w_orientation', False)
 
+    # ---- Verify files exist ----
+    assert os.path.isfile(lr_path), f"LR file not found: {lr_path}"
+    assert os.path.isfile(hr_path), f"HR file not found: {hr_path}"
+    print(f"LR file: {lr_path}")
+    print(f"HR file: {hr_path}")
 
-    # Prepare the CSV output
-    pd.write_header_temporal_extended_data_augmentation(output_filename)
-
-
-    # because the data is homogenous in 1 table, we only need the first data
-    with h5py.File(f'{base_path}/{lr_file}', mode = 'r' ) as hdf5:
-        frames, X, Y, Z = hdf5["u"].shape
+    # ---- Load data shapes and masks ----
+    with h5py.File(lr_path, mode='r') as hdf5:
+        t_lr, x_lr, y_lr, z_lr = hdf5['u'].shape
         mask_lr = np.asarray(hdf5['mask']).squeeze()
-        if (len(mask_lr.shape) == 4 and mask_lr.shape[0]==1) or len(mask_lr.shape) == 3:  
-            mask_lr = pd.create_temporal_mask(mask_lr, frames)
-    
-        t_lr, x_lr, y_lr, z_lr = np.array(hdf5['u']).shape
+        if len(mask_lr.shape) == 3:
+            mask_lr = pd.create_temporal_mask(mask_lr, t_lr)
 
-
-    with h5py.File(f'{base_path}/{hr_file}', 'r') as hf:
-        t_hr, x_hr, y_hr, z_hr = np.array(hf['u']).shape
+    with h5py.File(hr_path, 'r') as hf:
+        t_hr, x_hr, y_hr, z_hr = hf['u'].shape
         mask_hr = np.asarray(hf['mask']).squeeze()
 
-    # check on temporal aspect
-    if t_hr == t_lr:
-        step_t = 2 # or adjust this to downsampling size, default is factor 2
-        check_t = 1
-    else:
-        print('Set step size to 1, means it is expected that downsampling is already done in the data and not on the fly.')
-        step_t = 1
-        check_t = 2
+    print(f"LR shape: {t_lr, x_lr, y_lr, z_lr}")
+    print(f"HR shape: {t_hr, x_hr, y_hr, z_hr}")
 
-    assert((x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr)) # for temporal downsampling we need the same spatial shape
-    assert np.sum(np.abs(mask_lr - mask_hr[::check_t])) == 0 # mask of lr and hr should be the same after downsampling
+    # ---- Determine step size and validate ----
+    step_t, check_t = determine_step_t(t_lr, t_hr)
 
-    # We basically need the mask on the lowres data, the patches index are retrieved based on the LR data.
-    print("Overall shape", mask_lr.shape)
+    assert (x_lr, y_lr, z_lr) == (x_hr, y_hr, z_hr), "Spatial dimensions of LR and HR must match"
+    assert np.sum(np.abs(mask_lr - mask_hr[::check_t])) == 0, "LR and HR masks do not match after temporal alignment"
 
-    # Do the thresholding
+    # ---- Prepare binary mask ----
     binary_mask = (mask_lr >= mask_threshold) * 1
+    print(f"Binary mask shape: {binary_mask.shape}")
 
-    if extended_data_augmentation:
-        pd.save_csv_file_settings_json(lr_file, hr_file, output_filename, n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                        reverse_1,  all_rotation, swap_velocity_components, change_sign_velocity_components, step_t ,
-                                        save_nonaugmented_patch, n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique, sign_change_on_all_components)
-        augmentations = [
-        (reverse_1, 'flipping'),
-        (all_rotation, 'all_rotation'),
-        (swap_velocity_components, 'swap_velocity_components'),
-        (change_sign_velocity_components, 'change_sign_velocity_components')
-        ]
+    # ---- Write CSV header and save settings ----
+    pd.write_header(output_filename)
+    pd.save_settings_json(
+        lr_file, hr_file, output_filename, n_patch, binary_mask,
+        spatial_patch_size, temporal_patch_size, minimum_coverage, n_empty_patch_allowed,
+        step_t, save_nonaugmented_patch, n_patches_augmented_from_original_patch,
+        random_w_orientation
+    )
 
-        # Apply augmentations and store applied ones along with their names
-        augmentations_applied = [(func, name) for func, name in augmentations if func]
+    # ---- Generate patches for all axes ----
+    axis_labels = {0: '(t, y, z)', 1: '(t, x, z)', 2: '(t, x, y)'}
+    axis_ranges = {0: range(1, x_lr), 1: range(1, y_lr), 2: range(1, z_lr)}
 
-        if len(augmentations_applied) == 0:
-            print('No augmentation applied, only creating non-augmented patches')
-        else:
-            print('Applied augmentations:', [name for _, name in augmentations_applied])
+    for axis in [0, 1, 2]:
+        print(f"______ Creating patches for {axis_labels[axis]} slices _____________")
+        for idx in axis_ranges[axis]:
+            pd.generate_patches(
+                lr_file, hr_file, output_filename, axis, idx,
+                n_patch, binary_mask, spatial_patch_size, temporal_patch_size,
+                minimum_coverage, n_empty_patch_allowed,
+                step_t=step_t,
+                save_nonaugmented_patch=save_nonaugmented_patch,
+                n_patches_augmented_from_original_patch=n_patches_augmented_from_original_patch,
+                random_w_orientation=random_w_orientation
+            )
 
+    # ---- Save this script and config for reproducibility ----
+    shutil.copy2(__file__, csv_dir)
+    shutil.copy2(args.config, csv_dir)
 
-
-    for a in [0, 1, 2]:
-        if a == 0: 
-            print("______Create patches for (t, y, z) slices_____________")
-            for idx in range(1, X):
-                pd.generate_patches(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                       save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
-        elif a == 1:
-            print("______Create patches for (t, x, z) slices_____________")
-            for idx in range(1, Y):
-                pd.generate_patches(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                                        flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
-                                                       save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
-        elif a == 2:
-            print("______Create patches for (t, x, y) slices_____________")
-            for idx in range(1, Z):
-                pd.generate_patches(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                                        flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
-                                                       save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
-
-    
-    print(f'Done. File saved in {output_filename}')
-    # also save this py file in the same directory
-    
+    print(f"Done. Patches saved to {output_filename}")
