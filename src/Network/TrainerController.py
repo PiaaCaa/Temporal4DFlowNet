@@ -153,7 +153,7 @@ class  TrainerController:
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # Gradient info
-        self.gradient_norm = 0
+        self.gradient_norm = []
         self.gradient_threshold = 1
         self.gradient_over_threshold = False
         
@@ -463,6 +463,8 @@ class  TrainerController:
 
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
+        return grad_norm_tensor
+
     @tf.function
     def test_step(self, data_pairs):
         u,v,w, u_mag, v_mag, w_mag, u_hr,v_hr, w_hr, venc, mask = data_pairs
@@ -536,6 +538,7 @@ class  TrainerController:
             
             # Reset the metrics at the start of the next epoch
             self.reset_metrics()
+            self.gradient_norm = []
             start_loop = time.time()
             if self.lr_decay_epoch > 0: self.learning_rate_decay(epoch)
 
@@ -544,7 +547,8 @@ class  TrainerController:
                 for i, (data_pairs) in enumerate(trainset):
                     # Train the network
                     try:
-                        self.train_step(data_pairs)
+                        grad_norm = self.train_step(data_pairs)
+                        self.gradient_norm.append(grad_norm.numpy())
                     except Exception as e_train:
                         print(f"\nError during training step: {e_train}", flush=True)
                         print("Skipping the rest of the training for this epoch.")
