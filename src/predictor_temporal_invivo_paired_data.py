@@ -5,14 +5,14 @@ import os
 from Network.Temporal4DFlowNetModel import STR4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
-from utils.ImageDataset_temporal import ImageDataset_temporal
+from Temporal4DFlowNet.src.utils.ImageDataset import ImageDataset
 from matplotlib import pyplot as plt
 import h5py
 import timeit
 import argparse
 from scipy.interpolate import CubicSpline, RegularGridInterpolator
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
+# temporal invivo paired data
 
 # def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block):
 #     # Prepare input
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         assert os.path.exists(model_path), f"Model file does not exist: {model_path}"
 
         pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first = downsample_input_first)
-        dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])
+        dataset = ImageDataset(venc_colnames=['u_max', 'v_max', 'w_max'])
         
         os.makedirs(output_dir, exist_ok=True)
 

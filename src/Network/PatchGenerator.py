@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from Temporal4DFlowNet.src.utils import ImageDataset
+from utils import ImageDataset
 
 class PatchGenerator():
     def __init__(self, patch_size, res_increase, include_all_axis = False, downsample_input_first = True, downsampling_factor = 2):
@@ -144,9 +144,6 @@ class PatchGenerator():
         """
             Reconstruct the image from the patches
         """
-        print("Prediction size:", patches.shape)
-        # TODO check this new outcome
-        #patches size: n patches, p1, p2, p3(p1 patches size in 1)
 
         side_pad_x = (self.patch_size_tuple[0] - self.effective_patch_size_tuple[0]) // 2
         side_pax_y = (self.patch_size_tuple[1] - self.effective_patch_size_tuple[1]) // 2

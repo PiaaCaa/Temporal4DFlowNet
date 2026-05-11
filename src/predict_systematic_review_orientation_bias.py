@@ -7,7 +7,7 @@ import os
 from Network.Temporal4DFlowNetModel import STR4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
-from utils.ImageDataset_temporal import ImageDataset_temporal
+from Temporal4DFlowNet.src.utils.ImageDataset import ImageDataset
 from matplotlib import pyplot as plt
 import h5py
 import argparse
@@ -223,7 +223,7 @@ if __name__ == '__main__':
             if not os.path.exists(f'{output_dir}/{output_filename}'):
 
                 pgen = PatchGenerator(patch_size, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
-                dataset = ImageDataset_temporal(venc_colnames=venc_colnames)#['venc_u', 'venc_v', 'venc_w'])
+                dataset = ImageDataset(venc_colnames=venc_colnames)#['venc_u', 'venc_v', 'venc_w'])
 
                 print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
                 print("Outputfile exists already: ", os.path.exists(output_filename))

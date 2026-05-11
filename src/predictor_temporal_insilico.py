@@ -5,11 +5,12 @@ import os
 from Network.Temporal4DFlowNetModelv import STR4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
-from utils.ImageDataset_temporal import ImageDataset_temporal
+from Temporal4DFlowNet.src.utils.ImageDataset import ImageDataset
 from matplotlib import pyplot as plt
 import h5py
 import argparse
 # os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# temporal insilico
 
 def prepare_temporal_network(patch_size, res_increase, n_low_resblock, n_hi_resblock, low_res_block, high_res_block, upsampling_block, post_processing_block, include_mag_input=True):
     # Prepare input
@@ -124,7 +125,7 @@ if __name__ == '__main__':
         assert(not os.path.exists(output_filepath))  #STOP if output file is already created
 
         pgen = PatchGenerator(patch_size_tuple, res_increase,include_all_axis = True, downsample_input_first=downsample_input_first)
-        dataset = ImageDataset_temporal(venc_colnames=['u_max', 'v_max', 'w_max'])#['venc_u', 'venc_v', 'venc_w'])
+        dataset = ImageDataset(venc_colnames=['u_max', 'v_max', 'w_max'])#['venc_u', 'venc_v', 'venc_w'])
 
         print("Path exists:", os.path.exists(input_filepath), os.path.exists(model_path))
         print("Outputfile exists already: ", os.path.exists(output_filename))
