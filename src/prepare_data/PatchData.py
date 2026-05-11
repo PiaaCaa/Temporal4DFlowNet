@@ -108,12 +108,12 @@ def generate_patches(input_filename, target_filename, output_filename, axis, ind
 
     while j < n_patch:
         if not_found > 100:
-            print(f"Cannot find enough patches above {minimum_coverage} coverage, please lower minimum_coverage")
+            print(f"Warning: stopped early after {not_found} failed attempts. Found {j}/{n_patch} patches.")
             break
 
         patch = TemporalPatchData(input_filename, target_filename, s_patchsize, t_patchsize)
         patch.create_random_patch(binary_mask, index, axis, step_t=step_t)
-        patch.calculate_patch_coverage(binary_mask, minimum_coverage)
+        patch.calculate_patch_coverage(binary_mask)
 
         if patch.coverage < minimum_coverage:
             if empty_patch_counter < empty_patch_allowed:
