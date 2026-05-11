@@ -250,7 +250,7 @@ class  TrainerController:
         u,v,w = y_true[...,0],y_true[...,1], y_true[...,2]
         u_pred,v_pred,w_pred = y_pred[...,0],y_pred[...,1], y_pred[...,2]
 
-        return loss_utils.calculate_relative_error(u_pred, v_pred, w_pred, u, v, w, mask)
+        return self.calculate_relative_error(u_pred, v_pred, w_pred, u, v, w, mask)
 
     def calculate_l2_error(self, u, v, w, u_pred, v_pred, w_pred):
         """
@@ -269,6 +269,47 @@ class  TrainerController:
             Calculate L2 norm
         """
         return tf.sqrt(u ** 2 + v ** 2 + w ** 2)
+
+    def calculate_relative_error(self, u_pred, v_pred, w_pred, u_hi, v_hi, w_hi, binary_mask):
+        # if epsilon is set to 0, we will get nan and inf
+        epsilon = 1e-5
+
+        u_diff = tf.square(u_pred - u_hi)
+        v_diff = tf.square(v_pred - v_hi)
+        w_diff = tf.square(w_pred - w_hi)
+
+        diff_speed = tf.sqrt(u_diff + v_diff + w_diff)
+        actual_speed = tf.sqrt(tf.square(u_hi) + tf.square(v_hi) + tf.square(w_hi)) 
+
+        # actual speed can be 0, resulting in inf
+        relative_speed_loss = diff_speed / (actual_speed + epsilon)
+        
+        # Make sure the range is between 0 and 1 usign tanh
+        #relative_speed_loss = tf.clip_by_value(relative_speed_loss, 0., 1.)
+        relative_speed_loss = tf.tanh(relative_speed_loss)
+
+        # Apply correction, only use the diff speed if actual speed is zero
+        condition = tf.not_equal(actual_speed, tf.constant(0.))
+        corrected_speed_loss = tf.where(condition, relative_speed_loss, diff_speed)
+
+        multiplier = 1e4 # round it so we don't get any infinitesimal number
+        corrected_speed_loss = tf.round(corrected_speed_loss * multiplier) / multiplier
+        
+        # Apply mask
+        # binary_mask_condition = (mask > threshold)
+        binary_mask_condition = tf.equal(binary_mask, 1.0)          
+        corrected_speed_loss = tf.where(binary_mask_condition, corrected_speed_loss, tf.zeros_like(corrected_speed_loss))
+        # print(found_indexes)
+
+        # Calculate the mean from the total non zero accuracy, divided by the masked area
+        # reduce first to the 'batch' axis
+        mean_err = tf.reduce_sum(corrected_speed_loss, axis=[1,2,3]) / (tf.reduce_sum(binary_mask, axis=[1,2,3]) + 1) 
+
+        # now take the actual mean
+        # mean_err = tf.reduce_mean(mean_err) * 100 # in percentage
+        mean_err = mean_err * 100
+
+        return mean_err
     
     def calculate_cosine_similarity(self, u, v, w, u_pred, v_pred, w_pred):
         """
