@@ -6,8 +6,6 @@ import os
 
 
 # Physics consistent augmentations:
-# Each entry defines the geometric transform and the corresponding
-# velocity sign/swap changes needed to maintain physical consistency.
 # Flipping along axis 1 (start_1) requires sign_u=-1 to stay divergence-free.
 # Flipping along axis 2 (start_2) requires sign_v=-1.
 # Rotations require swapping u/v and adjusting signs accordingly.
