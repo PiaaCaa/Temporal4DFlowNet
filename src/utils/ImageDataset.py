@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-class ImageDataset_temporal():
+class ImageDataset():
     def __init__(self, venc_colnames = ['venc_u', 'venc_v', 'venc_w']):
         self.velocity_colnames   = ['u', 'v', 'w']
         self.venc_colnames = venc_colnames
