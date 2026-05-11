@@ -68,6 +68,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, required=True)
     args = parser.parse_args()
     cfg = load_config(args.config)
+    config_path = args.config
 
     # ---- Paths ----
     data_dir       = cfg['data_dir']

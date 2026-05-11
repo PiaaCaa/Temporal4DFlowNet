@@ -8,6 +8,7 @@ import tensorflow as tf
 import numpy as np
 import datetime
 import time
+
 import shutil
 import os
 from .Temporal4DFlowNetModel import T4DFlowNet
@@ -21,7 +22,7 @@ def calculate_time_elapsed(start):
         Output: 
             hrs, mins, secs = time elapsed in hours, minutes, seconds format
     '''
-    end = time()
+    end = time.time()
     hrs = (end-start)//60//60
     mins = ((end-start) - hrs*60*60)//60
     secs = int((end-start) - mins*60 - hrs*60*60)
