@@ -62,3 +62,5 @@ src/evaluate_insilico_comparison.py
 src/data_specifics/INVIVOII_params.py
 src/utils/settings_aortic_phantom.py
 configs/train.yaml
+configs/predict_config.yaml
+configs/prepare_patches.yaml
