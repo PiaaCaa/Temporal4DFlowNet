@@ -11,7 +11,27 @@ import time
 import shutil
 import os
 from .Temporal4DFlowNetModel import T4DFlowNet
-from . import utility, h5util, loss_utils
+from . import h5util
+
+def calculate_time_elapsed(start):
+    '''
+        This function calculates the time elapsed
+        Input:  
+            start = start time
+        Output: 
+            hrs, mins, secs = time elapsed in hours, minutes, seconds format
+    '''
+    end = time()
+    hrs = (end-start)//60//60
+    mins = ((end-start) - hrs*60*60)//60
+    secs = int((end-start) - mins*60 - hrs*60*60)
+
+    return hrs, mins, secs
+
+def log_to_file(filepath, msg):
+    with open(filepath, 'a') as f:
+        f.write(msg)
+
 
 class  TrainerController:
     # constructor
@@ -379,23 +399,23 @@ class  TrainerController:
         self.logfile = self.model_dir + '/loss.csv'
 
         # Log network and training configuration
-        utility.log_to_file(self.logfile, f'Network: {self.network_name}\n')
-        utility.log_to_file(self.logfile, f'Initial learning rate: {self.learning_rate}\n')
-        utility.log_to_file(self.logfile, f'LR decay epochs: {self.lr_decay_epoch}\n')
-        utility.log_to_file(self.logfile, f'L2 regularization: {self.L2_regularization}\n')
-        utility.log_to_file(self.logfile, f'Accuracy metric: {self.accuracy_metric}\n')
+        log_to_file(self.logfile, f'Network: {self.network_name}\n')
+        log_to_file(self.logfile, f'Initial learning rate: {self.learning_rate}\n')
+        log_to_file(self.logfile, f'LR decay epochs: {self.lr_decay_epoch}\n')
+        log_to_file(self.logfile, f'L2 regularization: {self.L2_regularization}\n')
+        log_to_file(self.logfile, f'Accuracy metric: {self.accuracy_metric}\n')
         # Log loss configuration
-        utility.log_to_file(self.logfile, f'Loss type: {self.loss_type}\n')
-        utility.log_to_file(self.logfile, f'Use directional loss: {self.use_directional_loss}\n')
-        utility.log_to_file(self.logfile, f'Alpha: {self.alpha}\n')
-        utility.log_to_file(self.logfile, f'Epsilon: {self.epsilon}\n')
-        utility.log_to_file(self.logfile, f'Weighting fluid: {self.weighting_fluid}\n')
-        utility.log_to_file(self.logfile, f'Weighting non-fluid: {self.weighting_non_fluid}\n')
-        utility.log_to_file(self.logfile, f'Separate MSE: {self.separate_mse}\n')
+        log_to_file(self.logfile, f'Loss type: {self.loss_type}\n')
+        log_to_file(self.logfile, f'Use directional loss: {self.use_directional_loss}\n')
+        log_to_file(self.logfile, f'Alpha: {self.alpha}\n')
+        log_to_file(self.logfile, f'Epsilon: {self.epsilon}\n')
+        log_to_file(self.logfile, f'Weighting fluid: {self.weighting_fluid}\n')
+        log_to_file(self.logfile, f'Weighting non-fluid: {self.weighting_non_fluid}\n')
+        log_to_file(self.logfile, f'Separate MSE: {self.separate_mse}\n')
 
         # Header
         stat_names = ','.join(self.loss_metrics.keys())
-        utility.log_to_file(self.logfile, f'epoch, {stat_names}, learning rate, elapsed (sec), best_model, benchmark_err, benchmark_rel_err, benchmark_mse, benchmark_divloss\n')
+        log_to_file(self.logfile, f'epoch, {stat_names}, learning rate, elapsed (sec), best_model, benchmark_err, benchmark_rel_err, benchmark_mse, benchmark_divloss\n')
 
         print("Copying source code to model directory...")
         base_path = "Temporal4DFlowNet/src/"
@@ -587,16 +607,16 @@ class  TrainerController:
                     log_line += f', {quick_loss:.7f}, {quick_accuracy:.2f}%, {quick_mse:.7f}, {quick_div:.7f}'
             # Logging
             print(message)
-            utility.log_to_file(self.logfile, log_line+"\n")
+            log_to_file(self.logfile, log_line+"\n")
             # /END of epoch loop
 
         # End
-        hrs, mins, secs = utility.calculate_time_elapsed(start_time)
+        hrs, mins, secs = calculate_time_elapsed(start_time)
         message =  f"\nTraining {self.network_name} completed! - name: {self.unique_model_name}"
         message += f"\nTotal training time: {hrs} hrs {mins} mins {secs} secs."
         message += f"\nFinished at {time.ctime()}"
         message += f"\n==================== END TRAINING ================="
-        utility.log_to_file(self.logfile, message)
+        log_to_file(self.logfile, message)
         print(message)
         
         # Finish!
