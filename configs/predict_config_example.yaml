@@ -1,0 +1,18 @@
+# ===== Model =====
+model_name: '20250912-1123'
+
+# ===== Paths =====
+data_dir: 'data/'
+output_root: 'results/'
+
+# ===== Prediction params =====
+res_increase: 2
+batch_size: 64
+patch_size: [16, 16, 16]
+downsample_input_first: false   # false = upsample temporally, # true  = downsample first 
+round_small_values: false
+
+# ===== Inputs =====
+inputs:
+  - filename: 'model1_lowres.h5'
+    output_filename: 'model1_lowres_predicted.h5'
