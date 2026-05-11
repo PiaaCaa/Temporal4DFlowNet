@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import argparse
 import csv
 import yaml
 from Network.PatchHandler import PatchHandler4D_preload, PatchHandler4D
@@ -63,8 +64,10 @@ def write_settings_into_csv_file(filename, name, training_file, validation_file,
 
 
 if __name__ == "__main__":
-    config_path = '/proj/multipress/users/x_piaca/Temporal4DFlowNet/configs/train.yaml'
-    cfg = load_config(config_path)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, required=True)
+    args = parser.parse_args()
+    cfg = load_config(args.config)
 
     # ---- Paths ----
     data_dir       = cfg['data_dir']
