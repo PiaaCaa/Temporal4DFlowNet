@@ -124,8 +124,8 @@ if __name__ == "__main__":
                 random_w_orientation=random_w_orientation
             )
 
-    # ---- Save this script and config for reproducibility ----
-    shutil.copy2(__file__, csv_dir)
-    shutil.copy2(args.config, csv_dir)
+    # ---- Save this config for reproducibility ----
+    config_backup = os.path.join(csv_dir, os.path.splitext(cfg['output_filename'])[0] + '_config.yaml')
+    shutil.copy2(args.config, config_backup)
 
     print(f"Done. Patches saved to {output_filename}")
