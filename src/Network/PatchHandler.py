@@ -44,7 +44,7 @@ class PatchHandler4D():
                          If False, no augmentation is applied (default True).
     """
 
-    def __init__(self, data_dir, patch_size, res_increase, batch_size, mask_threshold=0.6, augment=True):
+    def __init__(self, data_dir, patch_size, res_increase, batch_size, mask_threshold=0.6, augment=True, csv_file = None):
         self.patch_size = patch_size
         self.res_increase = res_increase
         self.batch_size = batch_size
@@ -79,13 +79,6 @@ class PatchHandler4D():
     def load_data_using_patch_index(self, indexes):
         out = tf.py_function(func=self.load_patches_from_index_file, inp=[indexes],
                              Tout=[tf.float32] * 11)
-
-        # Set shape hints for graph optimization (from PatchHandler4D_all_axis)
-        t, x, y = self.patch_size
-        for tensor in out[:-2]:
-            tensor.set_shape([t, x, y, 1])
-        out[-2].set_shape([])       # venc is scalar
-        out[-1].set_shape([t, x, y])  # mask has no channel dim
 
         return tuple(out)
 
@@ -334,7 +327,9 @@ class PatchHandler4D_preload():
                 self.hr_files[base_name_hr][self.mask_colname] = mask.astype('float32')
                 self.lr_files[base_name_lr]['venc'] = global_venc.astype('float32')
 
-        print("All data loaded from HD5 files.")
+        print("LR shape:", self.lr_files[base_name_lr]['u'].shape)
+        print("HR shape:", self.hr_files[base_name_hr]['u'].shape)  
+        print("All data loaded from HDF5 files.")
         print("LR files structure:", self.lr_files.keys())
         print("HR files structure:", self.hr_files.keys())
         print("LR files example:", self.lr_files[list(self.lr_files.keys())[0]].keys())
