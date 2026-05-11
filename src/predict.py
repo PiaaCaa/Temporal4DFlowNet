@@ -197,14 +197,12 @@ if __name__ == '__main__':
                     if round_small_values:
                         vel[np.abs(vel) < dataset.velocity_per_px] = 0
 
-                    vel = np.expand_dims(vel, axis=0)
-
-                    if vel.shape[1] != u_combined.shape[0]:
-                        print(f"Warning: Shape mismatch — expected {u_combined.shape[0]} frames, got {vel.shape[1]}. Padding/truncating.")
-                        if vel.shape[1] < u_combined.shape[0]:
-                            vel = np.pad(vel, ((0,0), (0, u_combined.shape[0]-vel.shape[1]), (0,0), (0,0), (0,0)))
+                    if vel.shape[0] != u_combined.shape[0]:
+                        print(f"Warning: Shape mismatch — expected {u_combined.shape[0]} frames, got {vel.shape[0]}. Padding/truncating.")
+                        if vel.shape[0] < u_combined.shape[0]:
+                            vel = np.pad(vel, ((0, u_combined.shape[0]-vel.shape[0]), (0,0), (0,0)))
                         else:
-                            vel = vel[:, :u_combined.shape[0], :, :]
+                            vel = vel[:u_combined.shape[0], :, :]
 
                     if a == 0:   volume[i, :, nrow, :,    :] = vel
                     elif a == 1: volume[i, :, :,    nrow, :] = vel
