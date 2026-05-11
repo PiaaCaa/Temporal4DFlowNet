@@ -19,8 +19,6 @@ This work extends [4DFlowNet](https://github.com/EdwardFerdian/4DFlowNet) from s
 
 ![Adapted 4DFlowNet Architecture](figures/architecture.png)
 
----
-
 ## Example Results
 
 ![Result](figures/results_animation.gif)
