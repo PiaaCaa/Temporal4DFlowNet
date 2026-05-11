@@ -18,7 +18,7 @@ import os
 import h5py
 import argparse
 import yaml
-from Network.Temporal4DFlowNetModel import STR4DFlowNet
+from Network.Temporal4DFlowNetModel import T4DFlowNet
 from Network.PatchGenerator import PatchGenerator
 from utils import prediction_utils
 from utils.ImageDataset import ImageDataset
@@ -49,7 +49,7 @@ def prepare_network(patch_size, res_increase, n_low_resblock, n_hi_resblock,
 
     input_layer = [u, v, w, u_mag, v_mag, w_mag] if include_mag_input else [u, v, w]
 
-    net = STR4DFlowNet(res_increase, low_res_block=low_res_block, high_res_block=high_res_block,
+    net = T4DFlowNet(res_increase, low_res_block=low_res_block, high_res_block=high_res_block,
                        upsampling_block=upsampling_block, post_processing_block=post_processing_block)
     prediction = net.build_network(u, v, w, u_mag, v_mag, w_mag,
                                    n_low_resblock, n_hi_resblock, include_mag=include_mag_input)

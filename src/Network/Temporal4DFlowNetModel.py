@@ -4,7 +4,7 @@ import tensorflow as tf
 This is adapted with code partwise copied from Derek Long: https://github.com/dlon450/4DFlowNetv2
 '''
 
-class STR4DFlowNet():
+class T4DFlowNet():
     def __init__(self, res_increase, high_res_block='resnet_block', low_res_block='resnet_block', upsampling_block='linear', post_processing_block=None):
         self.res_increase = res_increase
         self.high_res_block = high_res_block

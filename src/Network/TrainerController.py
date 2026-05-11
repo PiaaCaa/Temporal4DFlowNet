@@ -10,7 +10,7 @@ import datetime
 import time
 import shutil
 import os
-from .Temporal4DFlowNetModel import STR4DFlowNet
+from .Temporal4DFlowNetModel import T4DFlowNet
 from . import utility, h5util, loss_utils
 
 class  TrainerController:
@@ -97,7 +97,7 @@ class  TrainerController:
 
         input_layer = [u, v, w, u_mag, v_mag, w_mag] if include_mag_input else [u, v, w]
 
-        net = STR4DFlowNet(res_increase, low_res_block=low_res_block, high_res_block=high_res_block, 
+        net = T4DFlowNet(res_increase, low_res_block=low_res_block, high_res_block=high_res_block, 
                         upsampling_block=upsampling_block, post_processing_block=self.post_processing_block)
         self.predictions = net.build_network(u, v, w, u_mag, v_mag, w_mag, n_low_resblock, n_hi_resblock, include_mag=include_mag_input)
         self.model = tf.keras.Model(input_layer, self.predictions)
