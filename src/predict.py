@@ -3,7 +3,8 @@ Prediction script for Temporal4DFlowNet.
 
 Runs prediction for any input file (insilico, paired invivo, or invivo).
 All inputs and output filenames are defined in the config YAML.
-Network params are set directly in this script.
+Network params are loaded from model_config if specified in the config YAML,
+otherwise defaults are used — ensure these match the trained model.
 
 downsample_input_first:
     False - upsample temporally (invivo, insilico with already downsampled LR)
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     model_name   = cfg['model_name']
     data_dir     = cfg['data_dir']
     output_root  = cfg['output_root']
-    model_path   = f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5'
+    model_path = cfg.get('model_path', f'Temporal4DFlowNet/models/Temporal4DFlowNet_{model_name}/Temporal4DFlowNet-best.h5')
 
     # ---- Prediction params ----
     res_increase          = cfg.get('res_increase', 2)
@@ -74,15 +75,28 @@ if __name__ == '__main__':
     downsample_input_first = cfg.get('downsample_input_first', False)
     round_small_values    = cfg.get('round_small_values', False)
 
-    # ---- Network params (set here to match the model you want to predict from) ----
-    patch_size_tuple      = tuple(cfg.get('patch_size', [16, 16, 16]))
-    include_mag_input     = False
-    n_low_resblock        = 8
-    n_hi_resblock         = 4
-    low_res_block         = 'resnet_block'
-    high_res_block        = 'resnet_block'
-    upsampling_block      = 'linear'
-    post_processing_block = None
+    # ---- Network params: load from config if available, otherwise use hardcoded defaults ----
+    # These must match the architecture the model was trained with.
+    # If a model_config path is provided in the config, it will be loaded from there.
+
+    model_config_path = cfg.get('model_config', None)
+    if model_config_path is not None:
+        if not os.path.exists(model_config_path):
+            raise ValueError(f"model_config specified but not found: {model_config_path}")
+        model_cfg = load_config(model_config_path)
+        print(f"Loaded network params from model config: {model_config_path}")
+    else:
+        model_cfg = cfg  # fall back to current config or hardcoded defaults
+        print("Warning: no model_config provided — using hardcoded network defaults.")
+
+    patch_size_tuple      = tuple(model_cfg.get('patch_size', [16, 16, 16]))
+    include_mag_input     = model_cfg.get('include_mag_input', False)   
+    n_low_resblock        = model_cfg.get('n_low_resblock', 8)
+    n_hi_resblock         = model_cfg.get('n_hi_resblock', 4)
+    low_res_block         = model_cfg.get('low_res_block', 'resnet_block')
+    high_res_block        = model_cfg.get('high_res_block', 'resnet_block')
+    upsampling_block      = model_cfg.get('upsampling_block', 'linear')
+    post_processing_block = model_cfg.get('post_processing_block', None)
 
     assert os.path.exists(model_path), f"Model file does not exist: {model_path}"
 
@@ -176,24 +190,25 @@ if __name__ == '__main__':
                 print(f"\rDone. {data_size}/{data_size} - {time.time()-start_time:.1f}s")
 
                 for i in range(3):
-                    v = pgen._patchup_with_overlap(results[:, :, :, :, i],
+                    vel = pgen._patchup_with_overlap(results[:, :, :, :, i],
                                                    pgen.nr_x, pgen.nr_y, pgen.nr_z)
-                    v = v * dataset.venc
+                    vel = vel * dataset.venc
 
                     if round_small_values:
-                        v[np.abs(v) < dataset.velocity_per_px] = 0
+                        vel[np.abs(vel) < dataset.velocity_per_px] = 0
 
-                    v = np.expand_dims(v, axis=0)
+                    vel = np.expand_dims(vel, axis=0)
 
-                    if v.shape[1] != u_combined.shape[0]:
-                        if v.shape[1] < u_combined.shape[0]:
-                            v = np.pad(v, ((0,0), (0, u_combined.shape[0]-v.shape[1]), (0,0), (0,0), (0,0)))
+                    if vel.shape[1] != u_combined.shape[0]:
+                        print(f"Warning: Shape mismatch — expected {u_combined.shape[0]} frames, got {vel.shape[1]}. Padding/truncating.")
+                        if vel.shape[1] < u_combined.shape[0]:
+                            vel = np.pad(vel, ((0,0), (0, u_combined.shape[0]-vel.shape[1]), (0,0), (0,0), (0,0)))
                         else:
-                            v = v[:, :u_combined.shape[0], :, :]
+                            vel = vel[:, :u_combined.shape[0], :, :]
 
-                    if a == 0:   volume[i, :, nrow, :,    :] = v
-                    elif a == 1: volume[i, :, :,    nrow, :] = v
-                    elif a == 2: volume[i, :, :,    :,    nrow] = v
+                    if a == 0:   volume[i, :, nrow, :,    :] = vel
+                    elif a == 1: volume[i, :, :,    nrow, :] = vel
+                    elif a == 2: volume[i, :, :,    :,    nrow] = vel
 
             u_combined += volume[0]
             v_combined += volume[1]
