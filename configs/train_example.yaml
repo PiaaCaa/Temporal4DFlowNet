@@ -1,0 +1,53 @@
+# training_example.yaml
+
+# Paths
+data_dir: '/data'
+overview_csv: 'results/Overview_models.csv'
+
+# Training data
+training_file: 'Temporal16_training_example.csv'
+validate_file: 'Temporal16_validation_example.csv'
+benchmark_file: 'Temporal16_benchmark_example.csv'
+
+# Hyperparameters
+initial_learning_rate: 0.0002
+epochs: 130
+batch_size: 32
+mask_threshold: 0.6
+lr_decay_epochs: 0
+
+# Network
+network_name: 'Temporal4DFlowNet'
+patch_size: [16, 16, 16]
+res_increase: 2
+n_low_resblock: 8
+n_hi_resblock: 4
+low_res_block: 'resnet_block'
+high_res_block: 'resnet_block'
+upsampling_block: 'linear'
+post_processing_block: null
+include_mag_input: false
+
+# Flags
+preload_data: false  # set to true to load all data into RAM at init
+restore: false
+# model_dir: '/path/to/model'   # only needed if restore: true
+# model_file: 'model-best.h5'   # only needed if restore: true
+quicksave: false
+load_patches_all_axis: true
+shuffle: true
+notes: 'Test run '
+
+# ===== Training parameters =====
+learning_rate: 0.0001
+lr_decay_epochs: 0          # 0 to disable, otherwise decay every N epochs
+L2_regularization: 0.001    # 0 to disable
+
+# ===== Loss parameters =====
+loss_type: 'mse'               # base error: mse, mae, huber
+use_directional_loss: true     # add l1_projected term on top, weighted by alpha
+alpha: 0.8                  # weighting between MSE and directional loss
+epsilon: 1                  # minimum pixel count to avoid division by zero
+weighting_fluid: 1.0        # weighting for fluid region loss
+weighting_non_fluid: 1.0    # weighting for non-fluid region loss
+separate_mse: true          # if true, compute fluid and non-fluid loss separately
