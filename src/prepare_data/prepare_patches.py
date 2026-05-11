@@ -12,15 +12,6 @@ def load_config(config_path):
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-
-def load_data_shape(input_filepath):
-    """Load and print dataset shape from HDF5 file."""
-    with h5py.File(input_filepath, mode='r') as hdf5:
-        t, x, y, z = hdf5['u'].shape
-    print(f"Dataset of size: {t, x, y, z}")
-    return t, x, y, z
-
-
 def determine_step_t(t_lr, t_hr):
     """
     Determine temporal step size based on LR and HR frame counts.
