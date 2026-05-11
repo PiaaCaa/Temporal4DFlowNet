@@ -5,11 +5,11 @@ import json
 import os
 
 
-# Physics consistent augmentations:
+# Consistent augmentations:
 # Flipping along axis 1 (start_1) requires sign_u=-1 to stay divergence-free.
 # Flipping along axis 2 (start_2) requires sign_v=-1.
 # Rotations require swapping u/v and adjusting signs accordingly.
-PHYSICS_CONSISTENT_AUGMENTATIONS = {
+CONSISTENT_AUGMENTATIONS = {
     'flip_1':  {'flip_1': 1, 'flip_2': 0, 'rot': 0,   'sign_u': -1, 'sign_v':  1, 'sign_w': 1, 'swap_u': 'u', 'swap_v': 'v', 'swap_w': 'w'},
     'flip_2':  {'flip_1': 0, 'flip_2': 1, 'rot': 0,   'sign_u':  1, 'sign_v': -1, 'sign_w': 1, 'swap_u': 'u', 'swap_v': 'v', 'swap_w': 'w'},
     'flip_12': {'flip_1': 1, 'flip_2': 1, 'rot': 0,   'sign_u': -1, 'sign_v': -1, 'sign_w': 1, 'swap_u': 'u', 'swap_v': 'v', 'swap_w': 'w'},
@@ -51,7 +51,7 @@ def save_settings_json(input_filename, target_filename, output_filename, n_patch
         },
         'augmentation_settings': {
             'physics_consistent': True,
-            'augmentations': list(PHYSICS_CONSISTENT_AUGMENTATIONS.keys()),
+            'augmentations': list(CONSISTENT_AUGMENTATIONS.keys()),
             'save_nonaugmented_patch': save_nonaugmented_patch,
             'n_patches_augmented_from_original_patch': n_patches_augmented_from_original_patch,
             'random_w_orientation': random_w_orientation,
@@ -129,8 +129,8 @@ def generate_patches(input_filename, target_filename, output_filename, axis, ind
 
         # Sample augmentations without replacement so each type used at most once per patch
         if patch.coverage >= minimum_coverage:
-            n_to_apply = min(n_patches_augmented_from_original_patch, len(PHYSICS_CONSISTENT_AUGMENTATIONS))
-            selected = rnd.sample(list(PHYSICS_CONSISTENT_AUGMENTATIONS.keys()), n_to_apply)
+            n_to_apply = min(n_patches_augmented_from_original_patch, len(CONSISTENT_AUGMENTATIONS))
+            selected = rnd.sample(list(CONSISTENT_AUGMENTATIONS.keys()), n_to_apply)
             for augmentation_name in selected:
                 patch.reset_augmentation()
                 patch.apply_physics_consistent_augmentation(augmentation_name, random_w_orientation)
@@ -183,7 +183,7 @@ class TemporalPatchData:
         self.start_1 = rnd.randrange(0, u.shape[1] - self.spatial_patch_size)
         self.start_2 = rnd.randrange(0, u.shape[2] - self.spatial_patch_size)
 
-    def calculate_patch_coverage(self, binary_mask, minimum_coverage=0.2):
+    def calculate_patch_coverage(self, binary_mask):
         patch_region = np.index_exp[
             self.start_t:self.start_t + self.temporal_patch_size:self.step_t,
             self.start_1:self.start_1 + self.spatial_patch_size,
@@ -199,10 +199,10 @@ class TemporalPatchData:
         Each augmentation pairs geometric transforms with the correct velocity
         sign/swap changes to maintain physical consistency (divergence-free flow).
         """
-        assert augmentation_name in PHYSICS_CONSISTENT_AUGMENTATIONS, \
-            f"Unknown augmentation: {augmentation_name}. Choose from {list(PHYSICS_CONSISTENT_AUGMENTATIONS.keys())}"
+        assert augmentation_name in CONSISTENT_AUGMENTATIONS, \
+            f"Unknown augmentation: {augmentation_name}. Choose from {list(CONSISTENT_AUGMENTATIONS.keys())}"
 
-        params = PHYSICS_CONSISTENT_AUGMENTATIONS[augmentation_name]
+        params = CONSISTENT_AUGMENTATIONS[augmentation_name]
         self.flip_1 = params['flip_1']
         self.flip_2 = params['flip_2']
         self.rot    = params['rot']
