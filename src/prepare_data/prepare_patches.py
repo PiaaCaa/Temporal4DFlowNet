@@ -64,13 +64,8 @@ if __name__ == "__main__":
 
 
     # Prepare the CSV output
-    if temporal_preparation:
-        if extended_data_augmentation:
-            pd.write_header_temporal_extended_data_augmentation(output_filename)
-        else:
-            pd.write_header_temporal(output_filename)
-    else:
-        pd.write_header(output_filename)
+    pd.write_header_temporal_extended_data_augmentation(output_filename)
+
 
     # because the data is homogenous in 1 table, we only need the first data
     with h5py.File(f'{base_path}/{lr_file}', mode = 'r' ) as hdf5:
@@ -123,47 +118,26 @@ if __name__ == "__main__":
         else:
             print('Applied augmentations:', [name for _, name in augmentations_applied])
 
-    if temporal_preparation:
-        if extended_data_augmentation:
 
-            for a in [0, 1, 2]:
-                if a == 0: 
-                    print("______Create patches for (t, y, z) slices_____________")
-                    for idx in range(1, X):
-                        pd.generate_temporal_random_patches_extended_data_augmentation(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                                                flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
-                                                                save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
-                elif a == 1:
-                    print("______Create patches for (t, x, z) slices_____________")
-                    for idx in range(1, Y):
-                        pd.generate_temporal_random_patches_extended_data_augmentation(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                                                flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
-                                                                save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
-                elif a == 2:
-                    print("______Create patches for (t, x, y) slices_____________")
-                    for idx in range(1, Z):
-                        pd.generate_temporal_random_patches_extended_data_augmentation(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
-                                                                flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
-                                                                save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
-        else:
-            for a in [0, 1, 2]:
-                if a == 0: 
-                    print("______Create patches for (t, y, z) slices_____________")
-                    for idx in range(1, X):
-                        pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size, minimum_coverage, n_empty_patch_allowed, reverse_1, step_t)
-                elif a == 1:
-                    print("______Create patches for (t, x, z) slices_____________")
-                    for idx in range(1, Y):
-                        pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size, minimum_coverage, n_empty_patch_allowed, reverse_1, step_t)
-                elif a == 2:
-                    print("______Create patches for (t, x, y) slices_____________")
-                    for idx in range(1, Z):
-                        pd.generate_temporal_random_patches_all_axis(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size, minimum_coverage, n_empty_patch_allowed, reverse_1, step_t)
-    else:
-        # Generate random patches for all time frames
-        for index in range(0, frames):
-            print('Generating patches for row', index)
-            pd.generate_random_patches(lr_file, hr_file, output_filename, index, n_patch, binary_mask, spatial_patch_size, minimum_coverage, n_empty_patch_allowed, all_rotation)
+
+    for a in [0, 1, 2]:
+        if a == 0: 
+            print("______Create patches for (t, y, z) slices_____________")
+            for idx in range(1, X):
+                pd.generate_patches(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
+                                       save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
+        elif a == 1:
+            print("______Create patches for (t, x, z) slices_____________")
+            for idx in range(1, Y):
+                pd.generate_patches(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
+                                                        flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
+                                                       save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
+        elif a == 2:
+            print("______Create patches for (t, x, y) slices_____________")
+            for idx in range(1, Z):
+                pd.generate_patches(lr_file, hr_file, output_filename,a, idx,  n_patch, binary_mask, spatial_patch_size,temporal_patch_size, minimum_coverage, n_empty_patch_allowed, 
+                                                        flipping= reverse_1,  all_rotation = all_rotation, swap_velocity_components = swap_velocity_components, change_sign_velocity_components = change_sign_velocity_components,  step_t =step_t,
+                                                       save_nonaugmented_patch= save_nonaugmented_patch, n_patches_augmented_from_original_patch =n_patches_augmented_from_original_patch, only_choose_apply_one_augmentation_technique=only_choose_apply_one_augmentation_technique, sign_change_on_all_components=sign_change_on_all_components)
 
     
     print(f'Done. File saved in {output_filename}')
