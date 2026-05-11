@@ -280,15 +280,12 @@ class  TrainerController:
 
         diff_speed = tf.sqrt(u_diff + v_diff + w_diff)
         actual_speed = tf.sqrt(tf.square(u_hi) + tf.square(v_hi) + tf.square(w_hi)) 
-
-        # actual speed can be 0, resulting in inf
         relative_speed_loss = diff_speed / (actual_speed + epsilon)
         
         # Make sure the range is between 0 and 1 usign tanh
         #relative_speed_loss = tf.clip_by_value(relative_speed_loss, 0., 1.)
         relative_speed_loss = tf.tanh(relative_speed_loss)
 
-        # Apply correction, only use the diff speed if actual speed is zero
         condition = tf.not_equal(actual_speed, tf.constant(0.))
         corrected_speed_loss = tf.where(condition, relative_speed_loss, diff_speed)
 
@@ -296,18 +293,11 @@ class  TrainerController:
         corrected_speed_loss = tf.round(corrected_speed_loss * multiplier) / multiplier
         
         # Apply mask
-        # binary_mask_condition = (mask > threshold)
-        binary_mask_condition = tf.equal(binary_mask, 1.0)          
+        binary_mask_condition = (mask > threshold)
+        # binary_mask_condition = tf.equal(binary_mask, 1.0)          
         corrected_speed_loss = tf.where(binary_mask_condition, corrected_speed_loss, tf.zeros_like(corrected_speed_loss))
-        # print(found_indexes)
 
-        # Calculate the mean from the total non zero accuracy, divided by the masked area
-        # reduce first to the 'batch' axis
-        mean_err = tf.reduce_sum(corrected_speed_loss, axis=[1,2,3]) / (tf.reduce_sum(binary_mask, axis=[1,2,3]) + 1) 
-
-        # now take the actual mean
-        # mean_err = tf.reduce_mean(mean_err) * 100 # in percentage
-        mean_err = mean_err * 100
+        mean_err = tf.reduce_sum(corrected_speed_loss, axis=[1,2,3]) / (tf.reduce_sum(binary_mask, axis=[1,2,3]) + 1) * 100
 
         return mean_err
     
