@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 class ImageDataset_temporal():
     def __init__(self, venc_colnames = ['venc_u', 'venc_v', 'venc_w']):
         self.velocity_colnames   = ['u', 'v', 'w']
-        self.venc_colnames = venc_colnames#['u_max', 'v_max', 'w_max']#['venc_u', 'venc_v', 'venc_w']
+        self.venc_colnames = venc_colnames
         self.mag_colnames  = ['mag_u', 'mag_v', 'mag_w']
         self.dx_colname = 'dx'
 
@@ -50,7 +50,6 @@ class ImageDataset_temporal():
         with h5py.File(filepath, 'r') as hl:
             data_size = np.asarray(hl[self.velocity_colnames[0]]).squeeze().shape[axis +1]
             
-                
         return data_size
     
 
@@ -77,18 +76,8 @@ class ImageDataset_temporal():
                 elif axis == 2: 
                     idx_vol = np.index_exp[:, :, :, idx]
 
-
-                # TODO delete later: 
                 w = np.asarray(hl.get(self.velocity_colnames[i])).squeeze()[idx_vol]
                 mag_w = np.asarray(hl.get(self.mag_colnames[i])).squeeze()[idx_vol]
-                # print('mag_w shape', mag_w.shape)
-                # if mag_w.ndim == 3:
-                #     mag_w = np.repeat(mag_w[np.newaxis, :, :, :], w.shape[0], axis=0)
-                # print('mag_w shape', mag_w.shape)
-                # mag_w = mag_w[idx_vol]
-
-                # w = w[idx_vol]
-                # mag_w = mag_w[idx_vol]
 
                 
                 w_venc = np.asarray(hl.get(self.venc_colnames[i]))#)[idx])
