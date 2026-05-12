@@ -10,7 +10,7 @@ This repository contains the code that was published alongside the article:
 **[Deep learning for temporal super-resolution 4D Flow MRI](https://doi.org/10.1109/tmi.2026.3676987)**
 *(IEEE Transactions on Medical Imaging, 2026)*
 
-**Temporal4DFlowNet** is a residual deep learning network for temporal super-resolution 
+**Temporal4DFlowNet** is a residual convolutional neural network for temporal super-resolution 
 of 4D Flow MRI data. The network is trained on synthetic data derived from patient-specific 
 in-silico CFD models and evaluated on both synthetic and clinically acquired in-vivo datasets.
 This work extends [4DFlowNet](https://github.com/EdwardFerdian/4DFlowNet) from spatial to temporal super-resolution.
