@@ -27,7 +27,7 @@ src/testing/
 src/notebooks/
 src/test*.py
 
-# ===== Config files (use .example.yaml templates instead) =====
+# ===== Config files  =====
 configs/train.yaml
 configs/predict_config.yaml
 configs/prepare_patches.yaml
@@ -45,3 +45,4 @@ src/data_specifics/
 src/utils/settings_aortic_phantom.py
 src/utils/recover_fcts.py
 src/prepare_data/cfl.py
+!pretrained/*.h5  
