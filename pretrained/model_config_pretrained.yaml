@@ -1,0 +1,24 @@
+# Model config 
+
+# ---- Network architecture ----
+patch_size: [16, 16, 16]        # spatial x spatial x temporal patch size used in training
+include_mag_input: false        
+n_low_resblock: 8               # residual blocks in the low-resolution branch
+n_hi_resblock: 4                # residual blocks in the high-resolution branch
+low_res_block: resnet_block     # options: resnet_block, dense_block, csp_block
+high_res_block: resnet_block
+upsampling_block: linear        # options : linear, nearest_neigbor, Conv3DTranspose
+post_processing_block: null     # null  (option: unet_block)
+
+# ---- Training info  ----
+res_increase: 2                 
+network_name: Temporal4DFlowNet
+initial_learning_rate: 2.0e-4
+epochs: 130
+batch_size: 32
+mask_threshold: 0.6
+lr_decay_epochs: 0
+training_file: training.csv
+validation_file: validation.csv
+benchmark_file: benchmark.csv
+notes: Example for pretrained weights network

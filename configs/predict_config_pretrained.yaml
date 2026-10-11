@@ -1,0 +1,25 @@
+# ===== Model =====
+model_name: 'PretrainedNetwork'
+
+# ===== Paths =====
+# input data
+data_dir: 'Temporal4DFlowNet/data'
+
+# model
+model_path: 'Temporal4DFlowNet/pretrained/Temporal4DFlowNet-best.h5'
+model_config: 'Temporal4DFlowNet/pretrained/model_config_pretrained.yaml'
+
+# output
+output_root: 'Temporal4DFlowNet/results/pretrained_network' # will be saved under output_root/Temporal4DFlowNet_model_name
+
+# ===== Prediction params =====
+res_increase: 2
+batch_size: 32
+patch_size: [16, 16, 16]
+downsample_input_first: false   # true for removing every second frame on-the fly
+round_small_values: false
+
+# ===== Inputs =====
+inputs:
+  - filename: 'example.h5'
+    output_filename: 'example_pretrained.h5'
